@@ -436,18 +436,62 @@
             const requestCameraPermission = async () => {
                 setCameraStatus('requesting');
                 try {
-                    const stream = await navigator.mediaDevices.getUserMedia({ 
-                        video: { facingMode: 'environment' } 
-                    });
+                    // Try rear camera first, then front camera as fallback
+                    let stream;
+                    try {
+                        stream = await navigator.mediaDevices.getUserMedia({ 
+                            video: { 
+                                facingMode: 'environment',
+                                width: { ideal: 640 },
+                                height: { ideal: 480 }
+                            } 
+                        });
+                    } catch (rearCameraError) {
+                        console.log('Rear camera not available, trying front camera');
+                        stream = await navigator.mediaDevices.getUserMedia({ 
+                            video: { 
+                                facingMode: 'user',
+                                width: { ideal: 640 },
+                                height: { ideal: 480 }
+                            } 
+                        });
+                    }
+                    
                     streamRef.current = stream;
                     if (videoRef.current) {
                         videoRef.current.srcObject = stream;
+                        
+                        // Add event listeners before playing
+                        const onLoadedMetadata = () => {
+                            console.log('Video metadata loaded');
+                            setCameraStatus('active');
+                        };
+                        
+                        const onCanPlay = () => {
+                            console.log('Video can play');
+                        };
+                        
+                        videoRef.current.addEventListener('loadedmetadata', onLoadedMetadata);
+                        videoRef.current.addEventListener('canplay', onCanPlay);
+                        
+                        // Ensure video plays
+                        try {
+                            await videoRef.current.play();
+                            console.log('Video playing successfully');
+                        } catch (playError) {
+                            console.error('Video play error:', playError);
+                            // Set status to active anyway if we have a stream
+                            setCameraStatus('active');
+                        }
+                    } else {
+                        setCameraStatus('error');
                     }
-                    setCameraStatus('active');
                 } catch (err) {
                     console.error('Camera access error:', err);
                     if (err.name === 'NotAllowedError') {
                         setCameraStatus('denied');
+                    } else if (err.name === 'NotFoundError') {
+                        setCameraStatus('error');
                     } else {
                         setCameraStatus('error');
                     }
@@ -1209,9 +1253,23 @@
                                                 ref={videoRef} 
                                                 autoPlay 
                                                 playsInline 
-                                                className="w-full h-64 bg-gray-200 rounded-lg object-cover"
+                                                muted
+                                                className="w-full h-64 bg-black rounded-lg object-cover"
+                                                onLoadedMetadata={() => {
+                                                    if (videoRef.current) {
+                                                        videoRef.current.play().catch(console.error);
+                                                    }
+                                                }}
+                                                onCanPlay={() => {
+                                                    console.log('Video can play');
+                                                }}
+                                                onError={(e) => {
+                                                    console.error('Video error:', e);
+                                                    setCameraStatus('error');
+                                                }}
                                             />
-                                            <div className="absolute top-2 left-2 bg-green-600 text-white px-2 py-1 rounded text-xs">
+                                            <div className="absolute top-2 left-2 bg-green-600 text-white px-2 py-1 rounded text-xs flex items-center gap-1">
+                                                <div className="w-2 h-2 bg-white rounded-full animate-pulse"></div>
                                                 Camera Active
                                             </div>
                                             {/* Scanning overlay */}
@@ -1220,30 +1278,52 @@
                                                 <div className="absolute top-0 right-0 w-6 h-6 border-t-4 border-r-4 border-blue-500"></div>
                                                 <div className="absolute bottom-0 left-0 w-6 h-6 border-b-4 border-l-4 border-blue-500"></div>
                                                 <div className="absolute bottom-0 right-0 w-6 h-6 border-b-4 border-r-4 border-blue-500"></div>
+                                                {/* Scanning line animation */}
+                                                <div className="absolute top-0 left-0 right-0 h-0.5 bg-blue-500 animate-pulse"></div>
                                             </div>
                                             <p className="text-center text-sm text-gray-600 mt-2">
                                                 Point camera at barcode to scan
                                             </p>
+                                            {/* Debug info */}
+                                            <div className="text-xs text-gray-500 mt-1 text-center">
+                                                {videoRef.current?.videoWidth && videoRef.current?.videoHeight 
+                                                    ? `Video: ${videoRef.current.videoWidth}x${videoRef.current.videoHeight}`
+                                                    : 'Loading video...'}
+                                            </div>
                                         </div>
                                     )}
                                 </div>
 
                                 {/* Demo Section - Only show when camera is active */}
-                                {cameraStatus === 'active' && items.length > 0 && (
+                                {cameraStatus === 'active' && (
                                     <div className="mb-4">
-                                        <p className="text-sm text-gray-600 mb-2">Demo: Click to simulate scanning</p>
-                                        <div className="space-y-1 max-h-32 overflow-y-auto">
-                                            {items.map(item => (
-                                                <button
-                                                    key={item.id}
-                                                    onClick={() => simulateScan(item.barcode)}
-                                                    className="w-full text-left p-2 text-xs bg-gray-100 rounded hover:bg-gray-200 transition-colors"
-                                                >
-                                                    <span className="font-medium">{item.name}</span>
-                                                    <span className="text-gray-500"> ({item.barcode}) - Stock: {item.quantity}</span>
-                                                </button>
-                                            ))}
+                                        {/* Camera test section */}
+                                        <div className="mb-3 p-2 bg-blue-50 rounded text-xs">
+                                            <p className="font-medium text-blue-800 mb-1">Camera Status:</p>
+                                            <p className="text-blue-600">
+                                                Stream active: {streamRef.current ? 'Yes' : 'No'} | 
+                                                Video tracks: {streamRef.current?.getVideoTracks().length || 0} |
+                                                Video ready: {videoRef.current?.readyState >= 2 ? 'Yes' : 'No'}
+                                            </p>
                                         </div>
+                                        
+                                        {items.length > 0 && (
+                                            <div>
+                                                <p className="text-sm text-gray-600 mb-2">Demo: Click to simulate scanning</p>
+                                                <div className="space-y-1 max-h-32 overflow-y-auto">
+                                                    {items.map(item => (
+                                                        <button
+                                                            key={item.id}
+                                                            onClick={() => simulateScan(item.barcode)}
+                                                            className="w-full text-left p-2 text-xs bg-gray-100 rounded hover:bg-gray-200 transition-colors"
+                                                        >
+                                                            <span className="font-medium">{item.name}</span>
+                                                            <span className="text-gray-500"> ({item.barcode}) - Stock: {item.quantity}</span>
+                                                        </button>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        )}
                                     </div>
                                 )}
 
@@ -1347,16 +1427,21 @@
                                     >
                                         Close Scanner
                                     </button>
-                                    {cameraStatus === 'active' && !selectedItem && (
+                                    {cameraStatus === 'active' && (
                                         <button
                                             onClick={() => {
-                                                setScanResult('');
-                                                // In a real app, this would trigger actual barcode scanning
+                                                if (videoRef.current) {
+                                                    // Test video playback
+                                                    videoRef.current.play().then(() => {
+                                                        setScanResult('Camera test: Video playing successfully!');
+                                                    }).catch((err) => {
+                                                        setScanResult('Camera test failed: ' + err.message);
+                                                    });
+                                                }
                                             }}
-                                            className="flex-1 bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 transition-colors"
-                                            disabled
+                                            className="flex-1 bg-green-600 text-white py-2 rounded-lg hover:bg-green-700 transition-colors"
                                         >
-                                            Auto-Scan (Demo Only)
+                                            Test Camera
                                         </button>
                                     )}
                                 </div>
