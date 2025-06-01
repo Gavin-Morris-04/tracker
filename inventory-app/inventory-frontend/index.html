@@ -104,6 +104,144 @@
             </svg>
         );
 
+        // Updated API functions to match the new backend (no route parameters)
+        const API_BASE_URL = 'http://localhost:3001';
+
+        const apiRequest = async (endpoint, options = {}) => {
+            const token = localStorage.getItem('authToken');
+            const config = {
+                headers: {
+                    'Content-Type': 'application/json',
+                    ...(token && { 'Authorization': `Bearer ${token}` }),
+                    ...options.headers,
+                },
+                ...options,
+            };
+
+            try {
+                console.log(`🌐 API Request: ${options.method || 'GET'} ${endpoint}`);
+                const response = await fetch(`${API_BASE_URL}${endpoint}`, config);
+                
+                let data;
+                try {
+                    data = await response.json();
+                } catch (jsonError) {
+                    throw new Error('Invalid server response');
+                }
+
+                if (!response.ok) {
+                    console.error('❌ API Error:', data.error);
+                    throw new Error(data.error || `HTTP ${response.status}`);
+                }
+
+                console.log(`✅ API Success: ${endpoint}`);
+                return data;
+            } catch (error) {
+                console.error('🔥 Network Error:', error.message);
+                throw error;
+            }
+        };
+
+        // Updated mockAPI to match new backend structure
+        const mockAPI = {
+            register: async (email, password, name) => {
+                try {
+                    const response = await apiRequest('/api/register', {
+                        method: 'POST',
+                        body: JSON.stringify({ email: email.trim(), password, name: name.trim() }),
+                    });
+                    
+                    if (response.success) {
+                        localStorage.setItem('authToken', response.token);
+                        return { success: true, user: response.user };
+                    }
+                    return { success: false, error: 'Registration failed' };
+                } catch (error) {
+                    return { success: false, error: error.message };
+                }
+            },
+
+            login: async (email, password) => {
+                try {
+                    const response = await apiRequest('/api/login', {
+                        method: 'POST',
+                        body: JSON.stringify({ email: email.trim(), password }),
+                    });
+                    
+                    if (response.success) {
+                        localStorage.setItem('authToken', response.token);
+                        return { success: true, user: response.user, token: response.token };
+                    }
+                    return { success: false, error: 'Login failed' };
+                } catch (error) {
+                    return { success: false, error: error.message };
+                }
+            },
+
+            loadUserData: async (userId) => {
+                try {
+                    console.log('📊 Loading user data...');
+                    
+                    const [itemsResponse, activitiesResponse] = await Promise.all([
+                        apiRequest('/api/items'),
+                        apiRequest('/api/activities')
+                    ]);
+
+                    return {
+                        items: itemsResponse || [],
+                        activities: activitiesResponse || []
+                    };
+                } catch (error) {
+                    console.error('Failed to load user data:', error.message);
+                    return { items: [], activities: [] };
+                }
+            },
+
+            saveUserData: async (userId, data) => {
+                console.log('💾 Data automatically saved via SQLite backend');
+                return { success: true };
+            }
+        };
+
+        // Updated API functions for the new backend structure
+        const API = {
+            createItem: async (name, quantity, barcode) => {
+                return await apiRequest('/api/items', {
+                    method: 'POST',
+                    body: JSON.stringify({ name, quantity, barcode }),
+                });
+            },
+
+            updateItem: async (id, quantity) => {
+                return await apiRequest('/api/items', {
+                    method: 'PUT',
+                    body: JSON.stringify({ id, quantity }),
+                });
+            },
+
+            deleteItem: async (id) => {
+                return await apiRequest('/api/items', {
+                    method: 'DELETE',
+                    body: JSON.stringify({ id }),
+                });
+            },
+
+            findItemByBarcode: async (barcode) => {
+                try {
+                    return await apiRequest(`/api/items/search?barcode=${encodeURIComponent(barcode)}`);
+                } catch (error) {
+                    if (error.message.includes('not found')) {
+                        return null;
+                    }
+                    throw error;
+                }
+            },
+
+            getActivities: async () => {
+                return await apiRequest('/api/activities');
+            },
+        };
+
         const InventorySystem = () => {
             // Authentication state
             const [user, setUser] = useState(null);
@@ -135,62 +273,6 @@
             const videoRef = useRef(null);
             const streamRef = useRef(null);
 
-            // Mock API functions
-            const mockAPI = {
-                register: async (email, password, name) => {
-                    return new Promise((resolve) => {
-                        setTimeout(() => {
-                            // In browser storage, simulate user database
-                            const users = JSON.parse(localStorage.getItem('users') || '[]');
-                            if (users.find(u => u.email === email)) {
-                                resolve({ success: false, error: 'Email already exists' });
-                            } else {
-                                const user = { id: Date.now(), email, name, password };
-                                users.push(user);
-                                localStorage.setItem('users', JSON.stringify(users));
-                                resolve({ success: true, user: { id: user.id, email, name } });
-                            }
-                        }, 500);
-                    });
-                },
-
-                login: async (email, password) => {
-                    return new Promise((resolve) => {
-                        setTimeout(() => {
-                            const users = JSON.parse(localStorage.getItem('users') || '[]');
-                            const user = users.find(u => u.email === email && u.password === password);
-                            if (user) {
-                                const token = 'mock_jwt_token_' + Date.now();
-                                localStorage.setItem('authToken', token);
-                                resolve({ success: true, user: { id: user.id, email: user.email, name: user.name }, token });
-                            } else {
-                                resolve({ success: false, error: 'Invalid credentials' });
-                            }
-                        }, 500);
-                    });
-                },
-
-                loadUserData: async (userId) => {
-                    return new Promise((resolve) => {
-                        setTimeout(() => {
-                            const key = `userData_${userId}`;
-                            const data = JSON.parse(localStorage.getItem(key) || '{"items": [], "activities": []}');
-                            resolve(data);
-                        }, 300);
-                    });
-                },
-
-                saveUserData: async (userId, data) => {
-                    return new Promise((resolve) => {
-                        setTimeout(() => {
-                            const key = `userData_${userId}`;
-                            localStorage.setItem(key, JSON.stringify(data));
-                            resolve({ success: true });
-                        }, 200);
-                    });
-                }
-            };
-
             // Check for existing session on load
             useEffect(() => {
                 const token = localStorage.getItem('authToken');
@@ -205,11 +287,16 @@
             // Load user data
             const loadUserData = async (userId) => {
                 try {
+                    console.log('📊 Loading user data for user:', userId);
+                    
                     const data = await mockAPI.loadUserData(userId);
                     setItems(data.items || []);
                     setActivities(data.activities || []);
+                    
+                    console.log(`✅ Loaded ${data.items?.length || 0} items and ${data.activities?.length || 0} activities`);
                 } catch (error) {
-                    console.error('Failed to load user data:', error);
+                    console.error('❌ Failed to load user data:', error.message);
+                    console.log('ℹ️ Starting with empty data');
                 }
             };
 
@@ -317,60 +404,99 @@
                 setAvailablePrinters(mockPrinters);
             };
 
-            // Add new item
+            // Add new item - UPDATED FOR NEW BACKEND
             const addItem = async () => {
-                if (newItem.name.trim()) {
+                if (!newItem.name.trim()) {
+                    alert('Please enter an item name');
+                    return;
+                }
+                
+                try {
+                    console.log('🆕 Creating new item:', { name: newItem.name, quantity: newItem.quantity });
+                    
                     const id = Date.now();
-                    const item = {
-                        id,
-                        name: newItem.name.trim(),
-                        quantity: parseInt(newItem.quantity),
-                        barcode: generateBarcode(id),
-                        created: new Date().toISOString(),
-                        lastModified: new Date().toISOString()
-                    };
+                    const barcode = generateBarcode(id);
+                    
+                    const item = await API.createItem(
+                        newItem.name.trim(),
+                        parseInt(newItem.quantity) || 1,
+                        barcode
+                    );
+                    
+                    // Update local state immediately
                     setItems([...items, item]);
-                    addActivity('created', item.name, item.quantity);
+                    
+                    // Reset form
                     setNewItem({ name: '', quantity: 1 });
                     setShowAddForm(false);
                     
+                    // Show print dialog
                     setNewlyCreatedItem(item);
                     await detectPrinters();
                     setShowPrintDialog(true);
+                    
+                    console.log('✅ Item created successfully');
+                } catch (error) {
+                    console.error('❌ Failed to create item:', error.message);
+                    alert('Failed to create item: ' + error.message);
                 }
             };
 
-            // Update item quantity
-            const updateQuantity = (id, change) => {
-                setItems(items.map(item => {
-                    if (item.id === id) {
-                        const oldQuantity = item.quantity;
-                        const newQuantity = Math.max(0, item.quantity + change);
-                        const updatedItem = { 
-                            ...item, 
-                            quantity: newQuantity,
-                            lastModified: new Date().toISOString()
-                        };
-                        
-                        // Log activity
-                        if (change > 0) {
-                            addActivity('added', item.name, change, oldQuantity);
-                        } else {
-                            addActivity('removed', item.name, Math.abs(change), oldQuantity);
-                        }
-                        
-                        return updatedItem;
+            // Update item quantity - UPDATED FOR NEW BACKEND
+            const updateQuantity = async (id, change) => {
+                try {
+                    const item = items.find(i => i.id === id);
+                    if (!item) {
+                        console.error('Item not found locally');
+                        return;
                     }
-                    return item;
-                }));
+                    
+                    const newQuantity = Math.max(0, item.quantity + change);
+                    
+                    console.log(`📝 Updating item ${id}: ${item.quantity} → ${newQuantity}`);
+                    
+                    // Update on server first
+                    const updatedItem = await API.updateItem(id, newQuantity);
+                    
+                    // Update local state with server response
+                    setItems(items.map(i => i.id === id ? updatedItem : i));
+                    
+                    // Refresh activities
+                    const activities = await API.getActivities();
+                    setActivities(activities);
+                    
+                    console.log('✅ Item updated successfully');
+                } catch (error) {
+                    console.error('❌ Failed to update item:', error.message);
+                    alert('Failed to update item: ' + error.message);
+                }
             };
 
-            // Delete item
-            const deleteItem = (id) => {
-                const item = items.find(i => i.id === id);
-                if (item) {
-                    addActivity('deleted', item.name, item.quantity);
+            // Delete item - UPDATED FOR NEW BACKEND
+            const deleteItem = async (id) => {
+                try {
+                    const item = items.find(i => i.id === id);
+                    if (!item) return;
+                    
+                    const confirmed = confirm(`Are you sure you want to delete "${item.name}"?`);
+                    if (!confirmed) return;
+                    
+                    console.log(`🗑️ Deleting item: ${item.name}`);
+                    
+                    // Delete on server
+                    await API.deleteItem(id);
+                    
+                    // Update local state
                     setItems(items.filter(item => item.id !== id));
+                    
+                    // Refresh activities
+                    const activities = await API.getActivities();
+                    setActivities(activities);
+                    
+                    console.log('✅ Item deleted successfully');
+                } catch (error) {
+                    console.error('❌ Failed to delete item:', error.message);
+                    alert('Failed to delete item: ' + error.message);
                 }
             };
 
@@ -436,7 +562,6 @@
             const requestCameraPermission = async () => {
                 setCameraStatus('requesting');
                 try {
-                    // Try rear camera first, then front camera as fallback
                     let stream;
                     try {
                         stream = await navigator.mediaDevices.getUserMedia({ 
@@ -461,26 +586,18 @@
                     if (videoRef.current) {
                         videoRef.current.srcObject = stream;
                         
-                        // Add event listeners before playing
                         const onLoadedMetadata = () => {
                             console.log('Video metadata loaded');
                             setCameraStatus('active');
                         };
                         
-                        const onCanPlay = () => {
-                            console.log('Video can play');
-                        };
-                        
                         videoRef.current.addEventListener('loadedmetadata', onLoadedMetadata);
-                        videoRef.current.addEventListener('canplay', onCanPlay);
                         
-                        // Ensure video plays
                         try {
                             await videoRef.current.play();
                             console.log('Video playing successfully');
                         } catch (playError) {
                             console.error('Video play error:', playError);
-                            // Set status to active anyway if we have a stream
                             setCameraStatus('active');
                         }
                     } else {
@@ -498,23 +615,6 @@
                 }
             };
 
-            // Camera functions
-            const startCamera = async () => {
-                try {
-                    const stream = await navigator.mediaDevices.getUserMedia({ 
-                        video: { facingMode: 'environment' } 
-                    });
-                    streamRef.current = stream;
-                    if (videoRef.current) {
-                        videoRef.current.srcObject = stream;
-                    }
-                    setCameraStatus('active');
-                } catch (err) {
-                    setCameraStatus('error');
-                    alert('Camera access denied or not available');
-                }
-            };
-
             const stopCamera = () => {
                 if (streamRef.current) {
                     streamRef.current.getTracks().forEach(track => track.stop());
@@ -529,13 +629,24 @@
                 setCameraStatus('inactive');
             };
 
-            const simulateScan = (barcode) => {
-                const foundItem = items.find(item => item.barcode === barcode);
-                if (foundItem) {
-                    setSelectedItem(foundItem);
-                    setScanResult('Found: ' + foundItem.name);
-                } else {
-                    setScanResult('Item not found');
+            // Simulate scan - UPDATED FOR NEW BACKEND
+            const simulateScan = async (barcode) => {
+                try {
+                    console.log('🔍 Scanning barcode:', barcode);
+                    
+                    const foundItem = await API.findItemByBarcode(barcode.trim());
+                    
+                    if (foundItem) {
+                        setSelectedItem(foundItem);
+                        setScanResult('Found: ' + foundItem.name);
+                        console.log('✅ Item found:', foundItem.name);
+                    } else {
+                        setScanResult('Item not found');
+                        console.log('❌ Item not found for barcode:', barcode);
+                    }
+                } catch (error) {
+                    console.error('❌ Scan error:', error.message);
+                    setScanResult('Error scanning item: ' + error.message);
                 }
             };
 
@@ -678,9 +789,31 @@
                                 </button>
                             </form>
 
+                            {/* Demo Credentials Section */}
+                            <div className="mt-4 p-3 bg-blue-50 rounded-lg border border-blue-200">
+                                <h4 className="font-medium text-blue-800 mb-2">🎯 Quick Demo</h4>
+                                <p className="text-sm text-blue-700 mb-2">Try the demo account:</p>
+                                <div className="text-xs font-mono bg-white p-2 rounded border mb-2">
+                                    <div>Email: demo@inventory.com</div>
+                                    <div>Password: demo123</div>
+                                </div>
+                                <button
+                                    onClick={() => {
+                                        setAuthForm({email: 'demo@inventory.com', password: 'demo123', name: ''});
+                                        setTimeout(() => {
+                                            const loginEvent = { preventDefault: () => {} };
+                                            handleLogin(loginEvent);
+                                        }, 100);
+                                    }}
+                                    className="w-full bg-blue-600 text-white py-2 rounded hover:bg-blue-700 text-sm"
+                                >
+                                    🚀 Auto-Login with Demo Account
+                                </button>
+                            </div>
+
                             <div className="mt-6 text-center text-sm text-gray-600">
-                                <p>Demo accounts automatically sync across devices</p>
-                                <p className="mt-1 text-xs">Data persists in browser storage for demo purposes</p>
+                                <p>Real backend with SQLite database</p>
+                                <p className="mt-1 text-xs">Data persists across sessions</p>
                             </div>
                         </div>
                     </div>
@@ -942,10 +1075,10 @@
                                                                             </div>
                                                                         </td>
                                                                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                                                            {formatDate(item.created)}
+                                                                            {item.created_at ? formatDate(item.created_at) : 'N/A'}
                                                                         </td>
                                                                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                                                            {formatDate(item.lastModified)}
+                                                                            {item.updated_at ? formatDate(item.updated_at) : 'N/A'}
                                                                         </td>
                                                                         <td className="px-6 py-4 whitespace-nowrap">
                                                                             <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
@@ -1080,7 +1213,7 @@
                                                         </p>
                                                         <p className="text-xs text-gray-500">
                                                             <ClockIcon className="inline mr-1" />
-                                                            Modified: {formatDate(item.lastModified)}
+                                                            Modified: {item.updated_at ? formatDate(item.updated_at) : 'N/A'}
                                                         </p>
                                                     </div>
                                                     <button
@@ -1154,16 +1287,16 @@
                                                             }`}>
                                                                 {activity.type.toUpperCase()}
                                                             </span>
-                                                            <span className="font-medium">{activity.itemName}</span>
+                                                            <span className="font-medium">{activity.item_name}</span>
                                                         </div>
                                                         <p className="text-sm text-gray-600">
                                                             {activity.type === 'created' && `Created with initial quantity of ${activity.quantity}`}
-                                                            {activity.type === 'added' && `Added ${activity.quantity} items (was ${activity.oldQuantity})`}
-                                                            {activity.type === 'removed' && `Removed ${activity.quantity} items (was ${activity.oldQuantity})`}
+                                                            {activity.type === 'added' && `Added ${activity.quantity} items (was ${activity.old_quantity})`}
+                                                            {activity.type === 'removed' && `Removed ${activity.quantity} items (was ${activity.old_quantity})`}
                                                             {activity.type === 'deleted' && `Deleted item (had ${activity.quantity} items)`}
                                                         </p>
                                                         <p className="text-xs text-gray-500 mt-1">
-                                                            By {activity.user} • {formatDate(activity.timestamp)}
+                                                            {activity.created_at ? formatDate(activity.created_at) : 'N/A'}
                                                         </p>
                                                     </div>
                                                 </div>
@@ -1209,15 +1342,16 @@
 
                                     {cameraStatus === 'denied' && (
                                         <div className="bg-red-50 rounded-lg p-8 text-center">
-                                            <div className="mx-auto mb-3 w-12 h-12 text-red-400">
-                                                <svg viewBox="0 0 24 24" fill="currentColor">
-                                                    <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
-                                                </svg>
+                                            <div className="mx-auto mb-3 w-12 h-12 text-red-400">🚫</div>
+                                            <p className="text-red-800 mb-2 font-semibold">Camera Access Denied</p>
+                                            <div className="text-sm text-red-600 mb-4 space-y-2">
+                                                <p>Camera access was blocked. To enable:</p>
+                                                <ul className="text-left space-y-1 max-w-xs mx-auto">
+                                                    <li>• Click the camera icon 📷 in your browser's address bar</li>
+                                                    <li>• Select "Allow" for camera access</li>
+                                                    <li>• Refresh the page and try again</li>
+                                                </ul>
                                             </div>
-                                            <p className="text-red-800 mb-2">Camera access denied</p>
-                                            <p className="text-sm text-red-600 mb-4">
-                                                Please enable camera access in your browser settings and try again
-                                            </p>
                                             <button
                                                 onClick={requestCameraPermission}
                                                 className="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700"
@@ -1229,15 +1363,17 @@
 
                                     {cameraStatus === 'error' && (
                                         <div className="bg-yellow-50 rounded-lg p-8 text-center">
-                                            <div className="mx-auto mb-3 w-12 h-12 text-yellow-400">
-                                                <svg viewBox="0 0 24 24" fill="currentColor">
-                                                    <path d="M1 21h22L12 2 1 21zm12-3h-2v-2h2v2zm0-4h-2v-4h2v4z"/>
-                                                </svg>
+                                            <div className="mx-auto mb-3 w-12 h-12 text-yellow-400">⚠️</div>
+                                            <p className="text-yellow-800 mb-2 font-semibold">Camera Error</p>
+                                            <div className="text-sm text-yellow-600 mb-4 space-y-2">
+                                                <p>Unable to access camera. Try these steps:</p>
+                                                <ul className="text-left space-y-1 max-w-xs mx-auto">
+                                                    <li>• Check if camera is working in other apps</li>
+                                                    <li>• Close other applications using the camera</li>
+                                                    <li>• Restart your browser</li>
+                                                    <li>• Try a different browser</li>
+                                                </ul>
                                             </div>
-                                            <p className="text-yellow-800 mb-2">Camera error</p>
-                                            <p className="text-sm text-yellow-600 mb-4">
-                                                Unable to access camera. Please check your device settings.
-                                            </p>
                                             <button
                                                 onClick={requestCameraPermission}
                                                 className="bg-yellow-600 text-white px-4 py-2 rounded-lg hover:bg-yellow-700"
@@ -1284,48 +1420,59 @@
                                             <p className="text-center text-sm text-gray-600 mt-2">
                                                 Point camera at barcode to scan
                                             </p>
-                                            {/* Debug info */}
-                                            <div className="text-xs text-gray-500 mt-1 text-center">
-                                                {videoRef.current?.videoWidth && videoRef.current?.videoHeight 
-                                                    ? `Video: ${videoRef.current.videoWidth}x${videoRef.current.videoHeight}`
-                                                    : 'Loading video...'}
-                                            </div>
                                         </div>
                                     )}
                                 </div>
 
-                                {/* Demo Section - Only show when camera is active */}
-                                {cameraStatus === 'active' && (
-                                    <div className="mb-4">
-                                        {/* Camera test section */}
-                                        <div className="mb-3 p-2 bg-blue-50 rounded text-xs">
-                                            <p className="font-medium text-blue-800 mb-1">Camera Status:</p>
-                                            <p className="text-blue-600">
-                                                Stream active: {streamRef.current ? 'Yes' : 'No'} | 
-                                                Video tracks: {streamRef.current?.getVideoTracks().length || 0} |
-                                                Video ready: {videoRef.current?.readyState >= 2 ? 'Yes' : 'No'}
-                                            </p>
-                                        </div>
-                                        
-                                        {items.length > 0 && (
-                                            <div>
-                                                <p className="text-sm text-gray-600 mb-2">Demo: Click to simulate scanning</p>
-                                                <div className="space-y-1 max-h-32 overflow-y-auto">
-                                                    {items.map(item => (
-                                                        <button
-                                                            key={item.id}
-                                                            onClick={() => simulateScan(item.barcode)}
-                                                            className="w-full text-left p-2 text-xs bg-gray-100 rounded hover:bg-gray-200 transition-colors"
-                                                        >
-                                                            <span className="font-medium">{item.name}</span>
-                                                            <span className="text-gray-500"> ({item.barcode}) - Stock: {item.quantity}</span>
-                                                        </button>
-                                                    ))}
-                                                </div>
-                                            </div>
-                                        )}
+                                {/* Manual Barcode Entry - Fallback when camera fails */}
+                                <div className="mb-4 p-4 bg-gray-50 rounded-lg border">
+                                    <h4 className="font-medium text-gray-800 mb-2">Alternative: Manual Barcode Entry</h4>
+                                    <p className="text-sm text-gray-600 mb-3">Can't use camera? Enter a barcode manually:</p>
+                                    <div className="flex gap-2">
+                                        <input
+                                            type="text"
+                                            placeholder="Enter barcode (e.g., INV000001)"
+                                            className="flex-1 px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                            onKeyDown={(e) => {
+                                                if (e.key === 'Enter' && e.target.value.trim()) {
+                                                    simulateScan(e.target.value.trim());
+                                                    e.target.value = '';
+                                                }
+                                            }}
+                                        />
+                                        <button
+                                            onClick={(e) => {
+                                                const input = e.target.previousElementSibling;
+                                                if (input.value.trim()) {
+                                                    simulateScan(input.value.trim());
+                                                    input.value = '';
+                                                }
+                                            }}
+                                            className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700"
+                                        >
+                                            Look Up
+                                        </button>
                                     </div>
-                                )}
+                                    {items.length > 0 && (
+                                        <div className="mt-3">
+                                            <p className="text-xs text-gray-500 mb-1">Or click an existing item:</p>
+                                            <div className="flex flex-wrap gap-1">
+                                                {items.slice(0, 3).map(item => (
+                                                    <button
+                                                        key={item.id}
+                                                        onClick={() => simulateScan(item.barcode)}
+                                                        className="text-xs bg-white border px-2 py-1 rounded hover:bg-gray-50"
+                                                    >
+                                                        {item.name}
+                                                    </button>
+                                                ))}
+                                                {items.length > 3 && (
+                                                    <span className="text-xs text-gray-400 px-2 py-1">+{items.length - 3} more</span>
+                                                )}
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
 
                                 {/* Scan Results */}
                                 {scanResult && (
@@ -1427,23 +1574,6 @@
                                     >
                                         Close Scanner
                                     </button>
-                                    {cameraStatus === 'active' && (
-                                        <button
-                                            onClick={() => {
-                                                if (videoRef.current) {
-                                                    // Test video playback
-                                                    videoRef.current.play().then(() => {
-                                                        setScanResult('Camera test: Video playing successfully!');
-                                                    }).catch((err) => {
-                                                        setScanResult('Camera test failed: ' + err.message);
-                                                    });
-                                                }
-                                            }}
-                                            className="flex-1 bg-green-600 text-white py-2 rounded-lg hover:bg-green-700 transition-colors"
-                                        >
-                                            Test Camera
-                                        </button>
-                                    )}
                                 </div>
                             </div>
                         </div>
@@ -1530,6 +1660,8 @@
 
         const root = ReactDOM.createRoot(document.getElementById('root'));
         root.render(React.createElement(InventorySystem));
+
+        console.log('🎯 Inventory System with SQLite Backend loaded successfully!');
     </script>
 </body>
 </html>
