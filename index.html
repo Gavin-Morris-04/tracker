@@ -179,6 +179,8 @@
             const [scanResult, setScanResult] = useState('');
             const [selectedItem, setSelectedItem] = useState(null);
             const [adjustQuantity, setAdjustQuantity] = useState(1);
+            const [adjustAction, setAdjustAction] = useState('remove'); // 'add' or 'remove'
+            const [cameraStatus, setCameraStatus] = useState('inactive'); // 'inactive', 'requesting', 'active', 'denied', 'error'
             const [showPrintDialog, setShowPrintDialog] = useState(false);
             const [newlyCreatedItem, setNewlyCreatedItem] = useState(null);
             const [availablePrinters, setAvailablePrinters] = useState([]);
@@ -470,10 +472,13 @@
 
             const processScannedItem = () => {
                 if (selectedItem) {
-                    updateQuantity(selectedItem.id, -adjustQuantity);
-                    setScanResult('Removed ' + adjustQuantity + ' ' + selectedItem.name + '(s)');
+                    const change = adjustAction === 'add' ? adjustQuantity : -adjustQuantity;
+                    updateQuantity(selectedItem.id, change);
+                    const actionText = adjustAction === 'add' ? 'Added' : 'Removed';
+                    setScanResult(`${actionText} ${adjustQuantity} ${selectedItem.name}(s)`);
                     setSelectedItem(null);
                     setAdjustQuantity(1);
+                    setAdjustAction('remove');
                     setTimeout(() => {
                         setScanResult('');
                         stopCamera();
@@ -693,13 +698,22 @@
                                                  `${items.length} items in your inventory`}
                                             </p>
                                         </div>
-                                        <button
-                                            onClick={() => setCurrentView('inventory')}
-                                            className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 flex items-center gap-2"
-                                        >
-                                            <PlusIcon />
-                                            Add New Item
-                                        </button>
+                                        <div className="flex gap-2">
+                                            <button
+                                                onClick={() => setShowScanner(true)}
+                                                className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 flex items-center gap-2"
+                                            >
+                                                <CameraIcon />
+                                                Scan Item
+                                            </button>
+                                            <button
+                                                onClick={() => setCurrentView('inventory')}
+                                                className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 flex items-center gap-2"
+                                            >
+                                                <PlusIcon />
+                                                Add New Item
+                                            </button>
+                                        </div>
                                     </div>
                                 </div>
 
@@ -896,7 +910,7 @@
                                                     Add New Item
                                                 </button>
                                                 <button
-                                                    onClick={() => setCurrentView('inventory')}
+                                                    onClick={() => setShowScanner(true)}
                                                     className="flex items-center justify-center gap-2 bg-blue-600 text-white py-3 px-4 rounded-lg hover:bg-blue-700 transition-colors"
                                                 >
                                                     <CameraIcon />
@@ -920,77 +934,231 @@
                                 {/* Scanner Modal */}
                                 {showScanner && (
                                     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-                                        <div className="bg-white p-6 rounded-lg max-w-sm mx-4 w-full">
-                                            <h3 className="text-lg font-semibold mb-4">Scan Barcode</h3>
+                                        <div className="bg-white p-6 rounded-lg max-w-md mx-4 w-full">
+                                            <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
+                                                <CameraIcon />
+                                                Scan Item Barcode
+                                            </h3>
                                             
+                                            {/* Camera View */}
                                             <div className="mb-4">
-                                                <video 
-                                                    ref={videoRef} 
-                                                    autoPlay 
-                                                    playsInline 
-                                                    className="w-full h-48 bg-gray-200 rounded"
-                                                />
-                                            </div>
-
-                                            <div className="mb-4">
-                                                <p className="text-sm text-gray-600 mb-2">Demo: Click to scan an item</p>
-                                                <div className="space-y-1 max-h-32 overflow-y-auto">
-                                                    {items.map(item => (
+                                                {cameraStatus === 'inactive' && (
+                                                    <div className="bg-gray-100 rounded-lg p-8 text-center">
+                                                        <CameraIcon className="mx-auto mb-3 w-12 h-12 text-gray-400" />
+                                                        <p className="text-gray-600 mb-4">Camera access required to scan barcodes</p>
                                                         <button
-                                                            key={item.id}
-                                                            onClick={() => simulateScan(item.barcode)}
-                                                            className="w-full text-left p-2 text-xs bg-gray-100 rounded hover:bg-gray-200"
+                                                            onClick={requestCameraPermission}
+                                                            className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700"
                                                         >
-                                                            {item.name} ({item.barcode})
+                                                            Enable Camera
                                                         </button>
-                                                    ))}
-                                                </div>
+                                                    </div>
+                                                )}
+
+                                                {cameraStatus === 'requesting' && (
+                                                    <div className="bg-blue-50 rounded-lg p-8 text-center">
+                                                        <div className="animate-spin mx-auto mb-3 w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full"></div>
+                                                        <p className="text-blue-800">Requesting camera access...</p>
+                                                        <p className="text-sm text-blue-600 mt-1">Please allow camera access in your browser</p>
+                                                    </div>
+                                                )}
+
+                                                {cameraStatus === 'denied' && (
+                                                    <div className="bg-red-50 rounded-lg p-8 text-center">
+                                                        <div className="mx-auto mb-3 w-12 h-12 text-red-400">
+                                                            <svg viewBox="0 0 24 24" fill="currentColor">
+                                                                <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
+                                                            </svg>
+                                                        </div>
+                                                        <p className="text-red-800 mb-2">Camera access denied</p>
+                                                        <p className="text-sm text-red-600 mb-4">
+                                                            Please enable camera access in your browser settings and try again
+                                                        </p>
+                                                        <button
+                                                            onClick={requestCameraPermission}
+                                                            className="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700"
+                                                        >
+                                                            Try Again
+                                                        </button>
+                                                    </div>
+                                                )}
+
+                                                {cameraStatus === 'error' && (
+                                                    <div className="bg-yellow-50 rounded-lg p-8 text-center">
+                                                        <div className="mx-auto mb-3 w-12 h-12 text-yellow-400">
+                                                            <svg viewBox="0 0 24 24" fill="currentColor">
+                                                                <path d="M1 21h22L12 2 1 21zm12-3h-2v-2h2v2zm0-4h-2v-4h2v4z"/>
+                                                            </svg>
+                                                        </div>
+                                                        <p className="text-yellow-800 mb-2">Camera error</p>
+                                                        <p className="text-sm text-yellow-600 mb-4">
+                                                            Unable to access camera. Please check your device settings.
+                                                        </p>
+                                                        <button
+                                                            onClick={requestCameraPermission}
+                                                            className="bg-yellow-600 text-white px-4 py-2 rounded-lg hover:bg-yellow-700"
+                                                        >
+                                                            Try Again
+                                                        </button>
+                                                    </div>
+                                                )}
+
+                                                {cameraStatus === 'active' && (
+                                                    <div className="relative">
+                                                        <video 
+                                                            ref={videoRef} 
+                                                            autoPlay 
+                                                            playsInline 
+                                                            className="w-full h-64 bg-gray-200 rounded-lg object-cover"
+                                                        />
+                                                        <div className="absolute top-2 left-2 bg-green-600 text-white px-2 py-1 rounded text-xs">
+                                                            Camera Active
+                                                        </div>
+                                                        {/* Scanning overlay */}
+                                                        <div className="absolute inset-4 border-2 border-blue-500 rounded-lg pointer-events-none">
+                                                            <div className="absolute top-0 left-0 w-6 h-6 border-t-4 border-l-4 border-blue-500"></div>
+                                                            <div className="absolute top-0 right-0 w-6 h-6 border-t-4 border-r-4 border-blue-500"></div>
+                                                            <div className="absolute bottom-0 left-0 w-6 h-6 border-b-4 border-l-4 border-blue-500"></div>
+                                                            <div className="absolute bottom-0 right-0 w-6 h-6 border-b-4 border-r-4 border-blue-500"></div>
+                                                        </div>
+                                                        <p className="text-center text-sm text-gray-600 mt-2">
+                                                            Point camera at barcode to scan
+                                                        </p>
+                                                    </div>
+                                                )}
                                             </div>
 
-                                            {scanResult && (
-                                                <div className="mb-4 p-3 bg-blue-50 rounded">
-                                                    <p className="text-sm">{scanResult}</p>
+                                            {/* Demo Section - Only show when camera is active */}
+                                            {cameraStatus === 'active' && items.length > 0 && (
+                                                <div className="mb-4">
+                                                    <p className="text-sm text-gray-600 mb-2">Demo: Click to simulate scanning</p>
+                                                    <div className="space-y-1 max-h-32 overflow-y-auto">
+                                                        {items.map(item => (
+                                                            <button
+                                                                key={item.id}
+                                                                onClick={() => simulateScan(item.barcode)}
+                                                                className="w-full text-left p-2 text-xs bg-gray-100 rounded hover:bg-gray-200 transition-colors"
+                                                            >
+                                                                <span className="font-medium">{item.name}</span>
+                                                                <span className="text-gray-500"> ({item.barcode}) - Stock: {item.quantity}</span>
+                                                            </button>
+                                                        ))}
+                                                    </div>
                                                 </div>
                                             )}
 
+                                            {/* Scan Results */}
+                                            {scanResult && (
+                                                <div className="mb-4 p-3 bg-blue-50 rounded">
+                                                    <p className="text-sm font-medium text-blue-800">{scanResult}</p>
+                                                </div>
+                                            )}
+
+                                            {/* Scanned Item Management */}
                                             {selectedItem && (
-                                                <div className="mb-4 p-3 bg-green-50 rounded">
-                                                    <p className="font-medium">{selectedItem.name}</p>
-                                                    <p className="text-sm text-gray-600">Current: {selectedItem.quantity}</p>
+                                                <div className="mb-4 p-4 bg-green-50 rounded-lg border border-green-200">
+                                                    <div className="flex items-center gap-2 mb-3">
+                                                        <PackageIcon className="w-5 h-5 text-green-600" />
+                                                        <div>
+                                                            <p className="font-medium text-green-800">{selectedItem.name}</p>
+                                                            <p className="text-sm text-green-600">Current Stock: {selectedItem.quantity}</p>
+                                                        </div>
+                                                    </div>
                                                     
-                                                    <div className="flex items-center gap-2 mt-2">
-                                                        <label className="text-sm">Remove:</label>
+                                                    {/* Add/Remove Toggle */}
+                                                    <div className="flex items-center gap-2 mb-3">
+                                                        <span className="text-sm font-medium text-gray-700">Action:</span>
+                                                        <button
+                                                            onClick={() => setAdjustAction('remove')}
+                                                            className={`px-3 py-1 rounded text-sm font-medium transition-colors ${
+                                                                adjustAction === 'remove' 
+                                                                    ? 'bg-red-600 text-white' 
+                                                                    : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                                                            }`}
+                                                        >
+                                                            Remove
+                                                        </button>
+                                                        <button
+                                                            onClick={() => setAdjustAction('add')}
+                                                            className={`px-3 py-1 rounded text-sm font-medium transition-colors ${
+                                                                adjustAction === 'add' 
+                                                                    ? 'bg-green-600 text-white' 
+                                                                    : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                                                            }`}
+                                                        >
+                                                            Add
+                                                        </button>
+                                                    </div>
+                                                    
+                                                    <div className="flex items-center gap-2 mb-3">
+                                                        <span className="text-sm font-medium text-gray-700">Quantity:</span>
                                                         <button 
                                                             onClick={() => setAdjustQuantity(Math.max(1, adjustQuantity - 1))}
-                                                            className="p-1 bg-gray-200 rounded"
+                                                            className="p-1 bg-gray-200 rounded hover:bg-gray-300 transition-colors"
                                                         >
                                                             <MinusIcon />
                                                         </button>
-                                                        <span className="px-3 py-1 bg-white rounded border">{adjustQuantity}</span>
+                                                        <span className="px-3 py-1 bg-white rounded border font-medium min-w-[3rem] text-center">{adjustQuantity}</span>
                                                         <button 
                                                             onClick={() => setAdjustQuantity(adjustQuantity + 1)}
-                                                            className="p-1 bg-gray-200 rounded"
+                                                            className="p-1 bg-gray-200 rounded hover:bg-gray-300 transition-colors"
                                                         >
                                                             <PlusIcon />
                                                         </button>
                                                     </div>
                                                     
+                                                    {/* Preview of action */}
+                                                    <div className="mb-3 p-2 bg-white rounded border text-sm">
+                                                        {adjustAction === 'add' ? (
+                                                            <span className="text-green-700">
+                                                                <strong>Preview:</strong> Add {adjustQuantity} → New total: <strong>{selectedItem.quantity + adjustQuantity}</strong>
+                                                            </span>
+                                                        ) : (
+                                                            <span className="text-red-700">
+                                                                <strong>Preview:</strong> Remove {adjustQuantity} → New total: <strong>{Math.max(0, selectedItem.quantity - adjustQuantity)}</strong>
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                    
                                                     <button
                                                         onClick={processScannedItem}
-                                                        className="w-full mt-3 bg-red-600 text-white py-2 rounded hover:bg-red-700"
+                                                        disabled={adjustAction === 'remove' && selectedItem.quantity < adjustQuantity}
+                                                        className={`w-full py-2 rounded font-medium transition-colors ${
+                                                            adjustAction === 'add' 
+                                                                ? 'bg-green-600 text-white hover:bg-green-700' 
+                                                                : selectedItem.quantity < adjustQuantity
+                                                                    ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                                                                    : 'bg-red-600 text-white hover:bg-red-700'
+                                                        }`}
                                                     >
-                                                        Remove Items
+                                                        {adjustAction === 'add' ? 'Add Items' : 'Remove Items'}
+                                                        {adjustAction === 'remove' && selectedItem.quantity < adjustQuantity && (
+                                                            <div className="text-xs mt-1">Not enough stock available</div>
+                                                        )}
                                                     </button>
                                                 </div>
                                             )}
 
+                                            {/* Action Buttons */}
                                             <div className="flex gap-2">
                                                 <button
                                                     onClick={stopCamera}
-                                                    className="flex-1 bg-gray-500 text-white py-2 rounded hover:bg-gray-600"
+                                                    className="flex-1 bg-gray-500 text-white py-2 rounded-lg hover:bg-gray-600 transition-colors"
                                                 >
-                                                    Cancel
+                                                    Close Scanner
                                                 </button>
+                                                {cameraStatus === 'active' && !selectedItem && (
+                                                    <button
+                                                        onClick={() => {
+                                                            setScanResult('');
+                                                            // In a real app, this would trigger actual barcode scanning
+                                                        }}
+                                                        className="flex-1 bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 transition-colors"
+                                                        disabled
+                                                    >
+                                                        Auto-Scan (Demo Only)
+                                                    </button>
+                                                )}
                                             </div>
                                         </div>
                                     </div>
@@ -1129,7 +1297,7 @@
                                         className="flex-1 bg-blue-600 text-white py-3 rounded-lg hover:bg-blue-700 flex items-center justify-center gap-2"
                                     >
                                         <CameraIcon />
-                                        Scan Barcode
+                                        Scan Item
                                     </button>
                                 </div>
 
