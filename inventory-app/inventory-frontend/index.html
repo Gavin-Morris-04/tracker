@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Inventory Management System</title>
+    <title>Inventory Pro - Professional Inventory Management</title>
     <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
@@ -20,6 +20,13 @@
             max-height: 300px;
             overflow-y: auto;
         }
+        .gradient-bg {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+        .feature-card {
+            backdrop-filter: blur(10px);
+            background: rgba(255, 255, 255, 0.95);
+        }
     </style>
 </head>
 <body>
@@ -29,10 +36,31 @@
         const { useState, useRef, useEffect } = React;
 
         // Icons
+        const BuildingIcon = () => (
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M3 21h18"/>
+                <path d="M5 21V7l8-4v18"/>
+                <path d="M19 21V11l-6-4"/>
+                <line x1="9" y1="9" x2="9" y2="9.01"/>
+                <line x1="9" y1="12" x2="9" y2="12.01"/>
+                <line x1="9" y1="15" x2="9" y2="15.01"/>
+                <line x1="9" y1="18" x2="9" y2="18.01"/>
+            </svg>
+        );
+
         const UserIcon = () => (
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
                 <circle cx="12" cy="7" r="4"/>
+            </svg>
+        );
+
+        const UsersIcon = () => (
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+                <circle cx="9" cy="7" r="4"/>
+                <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+                <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
             </svg>
         );
 
@@ -104,7 +132,21 @@
             </svg>
         );
 
-        // Updated API functions to match the new backend (no route parameters)
+        const SettingsIcon = () => (
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <circle cx="12" cy="12" r="3"/>
+                <path d="M12 1v6m0 6v6m11-11h-6m-6 0H1"/>
+                <path d="M20.49 9.58L16.42 5.51M5.51 16.42L9.58 20.49M20.49 14.42L16.42 18.49M5.51 7.58L9.58 3.51"/>
+            </svg>
+        );
+
+        const CheckIcon = () => (
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <polyline points="20 6 9 17 4 12"/>
+            </svg>
+        );
+
+        // API Configuration
         const API_BASE_URL = 'http://localhost:3001';
 
         const apiRequest = async (endpoint, options = {}) => {
@@ -142,69 +184,62 @@
             }
         };
 
-        // Updated mockAPI to match new backend structure
-        const mockAPI = {
-            register: async (email, password, name) => {
-                try {
-                    const response = await apiRequest('/api/register', {
-                        method: 'POST',
-                        body: JSON.stringify({ email: email.trim(), password, name: name.trim() }),
-                    });
-                    
-                    if (response.success) {
-                        localStorage.setItem('authToken', response.token);
-                        return { success: true, user: response.user };
-                    }
-                    return { success: false, error: 'Registration failed' };
-                } catch (error) {
-                    return { success: false, error: error.message };
-                }
-            },
-
-            login: async (email, password) => {
-                try {
-                    const response = await apiRequest('/api/login', {
-                        method: 'POST',
-                        body: JSON.stringify({ email: email.trim(), password }),
-                    });
-                    
-                    if (response.success) {
-                        localStorage.setItem('authToken', response.token);
-                        return { success: true, user: response.user, token: response.token };
-                    }
-                    return { success: false, error: 'Login failed' };
-                } catch (error) {
-                    return { success: false, error: error.message };
-                }
-            },
-
-            loadUserData: async (userId) => {
-                try {
-                    console.log('📊 Loading user data...');
-                    
-                    const [itemsResponse, activitiesResponse] = await Promise.all([
-                        apiRequest('/api/items'),
-                        apiRequest('/api/activities')
-                    ]);
-
-                    return {
-                        items: itemsResponse || [],
-                        activities: activitiesResponse || []
-                    };
-                } catch (error) {
-                    console.error('Failed to load user data:', error.message);
-                    return { items: [], activities: [] };
-                }
-            },
-
-            saveUserData: async (userId, data) => {
-                console.log('💾 Data automatically saved via SQLite backend');
-                return { success: true };
-            }
-        };
-
-        // Updated API functions for the new backend structure
+        // API Functions
         const API = {
+            // Company Management
+            registerCompany: async (companyName, adminEmail, adminPassword, adminName) => {
+                return await apiRequest('/api/companies/register', {
+                    method: 'POST',
+                    body: JSON.stringify({ companyName, adminEmail, adminPassword, adminName }),
+                });
+            },
+
+            getCompanyInfo: async () => {
+                return await apiRequest('/api/companies/info');
+            },
+
+            updateCompany: async (updates) => {
+                return await apiRequest('/api/companies/update', {
+                    method: 'PUT',
+                    body: JSON.stringify(updates),
+                });
+            },
+
+            // User Management
+            inviteUser: async (email, name, role) => {
+                return await apiRequest('/api/users/invite', {
+                    method: 'POST',
+                    body: JSON.stringify({ email, name, role }),
+                });
+            },
+
+            getUsers: async () => {
+                return await apiRequest('/api/users');
+            },
+
+            updateUser: async (userId, updates) => {
+                return await apiRequest('/api/users/update', {
+                    method: 'PUT',
+                    body: JSON.stringify({ userId, ...updates }),
+                });
+            },
+
+            deleteUser: async (userId) => {
+                return await apiRequest('/api/users/delete', {
+                    method: 'DELETE',
+                    body: JSON.stringify({ userId }),
+                });
+            },
+
+            // Authentication
+            login: async (email, password) => {
+                return await apiRequest('/api/auth/login', {
+                    method: 'POST',
+                    body: JSON.stringify({ email, password }),
+                });
+            },
+
+            // Items
             createItem: async (name, quantity, barcode) => {
                 return await apiRequest('/api/items', {
                     method: 'POST',
@@ -226,6 +261,10 @@
                 });
             },
 
+            getItems: async () => {
+                return await apiRequest('/api/items');
+            },
+
             findItemByBarcode: async (barcode) => {
                 try {
                     return await apiRequest(`/api/items/search?barcode=${encodeURIComponent(barcode)}`);
@@ -237,38 +276,61 @@
                 }
             },
 
+            // Activities
             getActivities: async () => {
                 return await apiRequest('/api/activities');
+            },
+
+            // Analytics
+            getAnalytics: async () => {
+                return await apiRequest('/api/analytics');
             },
         };
 
         const InventorySystem = () => {
             // Authentication state
             const [user, setUser] = useState(null);
-            const [authView, setAuthView] = useState('login'); // 'login' or 'register'
+            const [company, setCompany] = useState(null);
+            const [authView, setAuthView] = useState('login'); // 'login', 'register', 'company-register'
             const [authLoading, setAuthLoading] = useState(false);
             
             // Main app state
-            const [currentView, setCurrentView] = useState('items'); // 'items', 'inventory', or 'activity'
+            const [currentView, setCurrentView] = useState('items');
             const [items, setItems] = useState([]);
             const [activities, setActivities] = useState([]);
+            const [companyUsers, setCompanyUsers] = useState([]);
             const [showAddForm, setShowAddForm] = useState(false);
             const [showScanner, setShowScanner] = useState(false);
+            const [showInviteUser, setShowInviteUser] = useState(false);
             const [newItem, setNewItem] = useState({ name: '', quantity: 1 });
             const [scanResult, setScanResult] = useState('');
             const [selectedItem, setSelectedItem] = useState(null);
             const [adjustQuantity, setAdjustQuantity] = useState(1);
-            const [adjustAction, setAdjustAction] = useState('remove'); // 'add' or 'remove'
-            const [cameraStatus, setCameraStatus] = useState('inactive'); // 'inactive', 'requesting', 'active', 'denied', 'error'
+            const [adjustAction, setAdjustAction] = useState('remove');
+            const [cameraStatus, setCameraStatus] = useState('inactive');
             const [showPrintDialog, setShowPrintDialog] = useState(false);
             const [newlyCreatedItem, setNewlyCreatedItem] = useState(null);
             const [availablePrinters, setAvailablePrinters] = useState([]);
             const [selectedPrinter, setSelectedPrinter] = useState(null);
-            const [itemsFilter, setItemsFilter] = useState('all'); // 'all', 'lowStock', 'outOfStock'
+            const [itemsFilter, setItemsFilter] = useState('all');
             const [itemsSearch, setItemsSearch] = useState('');
+            const [analytics, setAnalytics] = useState(null);
             
             // Auth form state
-            const [authForm, setAuthForm] = useState({ email: '', password: '', name: '' });
+            const [authForm, setAuthForm] = useState({ 
+                email: '', 
+                password: '', 
+                name: '', 
+                companyName: '',
+                companySize: 'small'
+            });
+
+            // Invite user form
+            const [inviteForm, setInviteForm] = useState({
+                email: '',
+                name: '',
+                role: 'user'
+            });
             
             const videoRef = useRef(null);
             const streamRef = useRef(null);
@@ -277,59 +339,80 @@
             useEffect(() => {
                 const token = localStorage.getItem('authToken');
                 const userData = localStorage.getItem('currentUser');
+                const companyData = localStorage.getItem('currentCompany');
+                
                 if (token && userData) {
                     const parsedUser = JSON.parse(userData);
+                    const parsedCompany = companyData ? JSON.parse(companyData) : null;
                     setUser(parsedUser);
-                    loadUserData(parsedUser.id);
+                    setCompany(parsedCompany);
+                    loadAppData();
                 }
             }, []);
 
-            // Load user data
-            const loadUserData = async (userId) => {
+            // Load all app data
+            const loadAppData = async () => {
                 try {
-                    console.log('📊 Loading user data for user:', userId);
+                    console.log('📊 Loading company data...');
                     
-                    const data = await mockAPI.loadUserData(userId);
-                    setItems(data.items || []);
-                    setActivities(data.activities || []);
-                    
-                    console.log(`✅ Loaded ${data.items?.length || 0} items and ${data.activities?.length || 0} activities`);
-                } catch (error) {
-                    console.error('❌ Failed to load user data:', error.message);
-                    console.log('ℹ️ Starting with empty data');
-                }
-            };
+                    const [itemsData, activitiesData, companyInfo] = await Promise.all([
+                        API.getItems(),
+                        API.getActivities(),
+                        API.getCompanyInfo()
+                    ]);
 
-            // Save user data
-            const saveUserData = async () => {
-                if (user) {
-                    try {
-                        await mockAPI.saveUserData(user.id, { items, activities });
-                    } catch (error) {
-                        console.error('Failed to save user data:', error);
+                    setItems(itemsData || []);
+                    setActivities(activitiesData || []);
+                    setCompany(companyInfo.company);
+                    localStorage.setItem('currentCompany', JSON.stringify(companyInfo.company));
+
+                    // Load users if admin
+                    if (user?.role === 'admin') {
+                        const users = await API.getUsers();
+                        setCompanyUsers(users || []);
+                    }
+
+                    // Load analytics
+                    const analyticsData = await API.getAnalytics();
+                    setAnalytics(analyticsData);
+                    
+                    console.log(`✅ Loaded company data successfully`);
+                } catch (error) {
+                    console.error('❌ Failed to load app data:', error.message);
+                    // If unauthorized, logout
+                    if (error.message.includes('401') || error.message.includes('403')) {
+                        handleLogout();
                     }
                 }
             };
 
-            // Save data whenever items or activities change
-            useEffect(() => {
-                if (user && (items.length > 0 || activities.length > 0)) {
-                    saveUserData();
+            // Handle company registration
+            const handleCompanyRegister = async (e) => {
+                e.preventDefault();
+                setAuthLoading(true);
+                
+                try {
+                    const result = await API.registerCompany(
+                        authForm.companyName,
+                        authForm.email,
+                        authForm.password,
+                        authForm.name
+                    );
+                    
+                    if (result.success) {
+                        localStorage.setItem('authToken', result.token);
+                        localStorage.setItem('currentUser', JSON.stringify(result.user));
+                        localStorage.setItem('currentCompany', JSON.stringify(result.company));
+                        setUser(result.user);
+                        setCompany(result.company);
+                        setAuthForm({ email: '', password: '', name: '', companyName: '', companySize: 'small' });
+                        await loadAppData();
+                    }
+                } catch (error) {
+                    alert('Registration failed: ' + error.message);
+                } finally {
+                    setAuthLoading(false);
                 }
-            }, [items, activities, user]);
-
-            // Add activity log entry
-            const addActivity = (type, itemName, quantity = null, oldQuantity = null) => {
-                const activity = {
-                    id: Date.now(),
-                    type, // 'created', 'added', 'removed', 'deleted'
-                    itemName,
-                    quantity,
-                    oldQuantity,
-                    timestamp: new Date().toISOString(),
-                    user: user.name
-                };
-                setActivities(prev => [activity, ...prev]);
             };
 
             // Handle login
@@ -338,40 +421,19 @@
                 setAuthLoading(true);
                 
                 try {
-                    const result = await mockAPI.login(authForm.email, authForm.password);
+                    const result = await API.login(authForm.email, authForm.password);
+                    
                     if (result.success) {
-                        setUser(result.user);
+                        localStorage.setItem('authToken', result.token);
                         localStorage.setItem('currentUser', JSON.stringify(result.user));
-                        await loadUserData(result.user.id);
-                        setAuthForm({ email: '', password: '', name: '' });
-                    } else {
-                        alert(result.error);
+                        localStorage.setItem('currentCompany', JSON.stringify(result.company));
+                        setUser(result.user);
+                        setCompany(result.company);
+                        setAuthForm({ email: '', password: '', name: '', companyName: '', companySize: 'small' });
+                        await loadAppData();
                     }
                 } catch (error) {
-                    alert('Login failed. Please try again.');
-                } finally {
-                    setAuthLoading(false);
-                }
-            };
-
-            // Handle registration
-            const handleRegister = async (e) => {
-                e.preventDefault();
-                setAuthLoading(true);
-                
-                try {
-                    const result = await mockAPI.register(authForm.email, authForm.password, authForm.name);
-                    if (result.success) {
-                        setUser(result.user);
-                        localStorage.setItem('currentUser', JSON.stringify(result.user));
-                        setActivities([]);
-                        setItems([]);
-                        setAuthForm({ email: '', password: '', name: '' });
-                    } else {
-                        alert(result.error);
-                    }
-                } catch (error) {
-                    alert('Registration failed. Please try again.');
+                    alert('Login failed: ' + error.message);
                 } finally {
                     setAuthLoading(false);
                 }
@@ -380,31 +442,61 @@
             // Handle logout
             const handleLogout = () => {
                 setUser(null);
+                setCompany(null);
                 setItems([]);
                 setActivities([]);
+                setCompanyUsers([]);
                 localStorage.removeItem('authToken');
                 localStorage.removeItem('currentUser');
+                localStorage.removeItem('currentCompany');
                 setCurrentView('items');
+                setAuthView('login');
+            };
+
+            // Invite user
+            const handleInviteUser = async (e) => {
+                e.preventDefault();
+                
+                try {
+                    const result = await API.inviteUser(
+                        inviteForm.email,
+                        inviteForm.name,
+                        inviteForm.role
+                    );
+                    
+                    if (result.success) {
+                        alert(`Invitation sent to ${inviteForm.email}`);
+                        setInviteForm({ email: '', name: '', role: 'user' });
+                        setShowInviteUser(false);
+                        
+                        // Reload users
+                        const users = await API.getUsers();
+                        setCompanyUsers(users);
+                    }
+                } catch (error) {
+                    alert('Failed to invite user: ' + error.message);
+                }
+            };
+
+            // Delete user
+            const handleDeleteUser = async (userId) => {
+                if (!confirm('Are you sure you want to remove this user?')) return;
+                
+                try {
+                    await API.deleteUser(userId);
+                    const users = await API.getUsers();
+                    setCompanyUsers(users);
+                } catch (error) {
+                    alert('Failed to delete user: ' + error.message);
+                }
             };
 
             // Generate barcode
             const generateBarcode = (id) => {
-                return 'INV' + id.toString().padStart(6, '0');
+                return company ? `${company.code}-${id.toString().padStart(6, '0')}` : `INV${id.toString().padStart(6, '0')}`;
             };
 
-            // Detect printers
-            const detectPrinters = async () => {
-                const mockPrinters = [
-                    { id: 'browser', name: 'Browser Print Dialog', type: 'browser' },
-                    { id: 'default', name: 'Default System Printer', type: 'system' },
-                    { id: 'network1', name: 'HP LaserJet Pro (WiFi)', type: 'network' },
-                    { id: 'network2', name: 'Canon PIXMA (WiFi)', type: 'network' },
-                    { id: 'bluetooth1', name: 'Brother Label Printer (Bluetooth)', type: 'bluetooth' }
-                ];
-                setAvailablePrinters(mockPrinters);
-            };
-
-            // Add new item - UPDATED FOR NEW BACKEND
+            // Add new item
             const addItem = async () => {
                 if (!newItem.name.trim()) {
                     alert('Please enter an item name');
@@ -423,14 +515,10 @@
                         barcode
                     );
                     
-                    // Update local state immediately
                     setItems([...items, item]);
-                    
-                    // Reset form
                     setNewItem({ name: '', quantity: 1 });
                     setShowAddForm(false);
                     
-                    // Show print dialog
                     setNewlyCreatedItem(item);
                     await detectPrinters();
                     setShowPrintDialog(true);
@@ -442,26 +530,17 @@
                 }
             };
 
-            // Update item quantity - UPDATED FOR NEW BACKEND
+            // Update item quantity
             const updateQuantity = async (id, change) => {
                 try {
                     const item = items.find(i => i.id === id);
-                    if (!item) {
-                        console.error('Item not found locally');
-                        return;
-                    }
+                    if (!item) return;
                     
                     const newQuantity = Math.max(0, item.quantity + change);
                     
-                    console.log(`📝 Updating item ${id}: ${item.quantity} → ${newQuantity}`);
-                    
-                    // Update on server first
                     const updatedItem = await API.updateItem(id, newQuantity);
-                    
-                    // Update local state with server response
                     setItems(items.map(i => i.id === id ? updatedItem : i));
                     
-                    // Refresh activities
                     const activities = await API.getActivities();
                     setActivities(activities);
                     
@@ -472,7 +551,7 @@
                 }
             };
 
-            // Delete item - UPDATED FOR NEW BACKEND
+            // Delete item
             const deleteItem = async (id) => {
                 try {
                     const item = items.find(i => i.id === id);
@@ -481,15 +560,9 @@
                     const confirmed = confirm(`Are you sure you want to delete "${item.name}"?`);
                     if (!confirmed) return;
                     
-                    console.log(`🗑️ Deleting item: ${item.name}`);
-                    
-                    // Delete on server
                     await API.deleteItem(id);
-                    
-                    // Update local state
                     setItems(items.filter(item => item.id !== id));
                     
-                    // Refresh activities
                     const activities = await API.getActivities();
                     setActivities(activities);
                     
@@ -498,6 +571,17 @@
                     console.error('❌ Failed to delete item:', error.message);
                     alert('Failed to delete item: ' + error.message);
                 }
+            };
+
+            // Detect printers
+            const detectPrinters = async () => {
+                const mockPrinters = [
+                    { id: 'browser', name: 'Browser Print Dialog', type: 'browser' },
+                    { id: 'default', name: 'Default System Printer', type: 'system' },
+                    { id: 'network1', name: 'HP LaserJet Pro (WiFi)', type: 'network' },
+                    { id: 'bluetooth1', name: 'Brother Label Printer (Bluetooth)', type: 'bluetooth' }
+                ];
+                setAvailablePrinters(mockPrinters);
             };
 
             // Print barcode
@@ -516,6 +600,7 @@
                     '<html><head><title>Barcode - ' + newlyCreatedItem.name + '</title>',
                     '<style>',
                     'body { font-family: Arial, sans-serif; margin: 20px; text-align: center; }',
+                    '.company-name { font-size: 14px; font-weight: bold; margin-bottom: 10px; color: #333; }',
                     '.barcode-container { border: 3px solid #000; padding: 20px; display: inline-block; background: white; }',
                     '.item-name { font-size: 20px; font-weight: bold; margin-bottom: 15px; }',
                     '.barcode-visual { background: repeating-linear-gradient(90deg, #000 0px, #000 3px, #fff 3px, #fff 6px); height: 60px; width: 200px; margin: 10px auto; border: 1px solid #000; }',
@@ -525,6 +610,7 @@
                     '@media print { * { color: #000 !important; } .barcode-visual { -webkit-print-color-adjust: exact; print-color-adjust: exact; } }',
                     '</style></head><body>',
                     '<div class="barcode-container">',
+                    '<div class="company-name">' + (company?.name || 'Inventory Pro') + '</div>',
                     '<div class="item-name">' + newlyCreatedItem.name + '</div>',
                     '<div class="barcode-visual"></div>',
                     '<div class="barcode-text-pattern">' + createTextBarcode(newlyCreatedItem.barcode) + '</div>',
@@ -565,56 +651,37 @@
                     let stream;
                     try {
                         stream = await navigator.mediaDevices.getUserMedia({ 
-                            video: { 
-                                facingMode: 'environment',
-                                width: { ideal: 640 },
-                                height: { ideal: 480 }
-                            } 
+                            video: { facingMode: 'environment' } 
                         });
                     } catch (rearCameraError) {
-                        console.log('Rear camera not available, trying front camera');
                         stream = await navigator.mediaDevices.getUserMedia({ 
-                            video: { 
-                                facingMode: 'user',
-                                width: { ideal: 640 },
-                                height: { ideal: 480 }
-                            } 
+                            video: { facingMode: 'user' } 
                         });
                     }
                     
                     streamRef.current = stream;
                     if (videoRef.current) {
                         videoRef.current.srcObject = stream;
-                        
-                        const onLoadedMetadata = () => {
-                            console.log('Video metadata loaded');
+                        videoRef.current.addEventListener('loadedmetadata', () => {
                             setCameraStatus('active');
-                        };
-                        
-                        videoRef.current.addEventListener('loadedmetadata', onLoadedMetadata);
+                        });
                         
                         try {
                             await videoRef.current.play();
-                            console.log('Video playing successfully');
                         } catch (playError) {
-                            console.error('Video play error:', playError);
                             setCameraStatus('active');
                         }
-                    } else {
-                        setCameraStatus('error');
                     }
                 } catch (err) {
-                    console.error('Camera access error:', err);
                     if (err.name === 'NotAllowedError') {
                         setCameraStatus('denied');
-                    } else if (err.name === 'NotFoundError') {
-                        setCameraStatus('error');
                     } else {
                         setCameraStatus('error');
                     }
                 }
             };
 
+            // Stop camera
             const stopCamera = () => {
                 if (streamRef.current) {
                     streamRef.current.getTracks().forEach(track => track.stop());
@@ -629,7 +696,7 @@
                 setCameraStatus('inactive');
             };
 
-            // Simulate scan - UPDATED FOR NEW BACKEND
+            // Simulate scan
             const simulateScan = async (barcode) => {
                 try {
                     console.log('🔍 Scanning barcode:', barcode);
@@ -650,6 +717,7 @@
                 }
             };
 
+            // Process scanned item
             const processScannedItem = () => {
                 if (selectedItem) {
                     const change = adjustAction === 'add' ? adjustQuantity : -adjustQuantity;
@@ -666,17 +734,16 @@
                 }
             };
 
-            // Format date for display
+            // Format date
             const formatDate = (dateString) => {
                 const date = new Date(dateString);
                 return date.toLocaleDateString() + ' ' + date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
             };
 
-            // Filter items based on search and filter criteria
+            // Filter items
             const getFilteredItems = () => {
                 let filtered = items;
 
-                // Apply search filter
                 if (itemsSearch.trim()) {
                     filtered = filtered.filter(item => 
                         item.name.toLowerCase().includes(itemsSearch.toLowerCase()) ||
@@ -684,16 +751,12 @@
                     );
                 }
 
-                // Apply status filter
                 switch (itemsFilter) {
                     case 'lowStock':
                         filtered = filtered.filter(item => item.quantity > 0 && item.quantity <= 5);
                         break;
                     case 'outOfStock':
                         filtered = filtered.filter(item => item.quantity === 0);
-                        break;
-                    default:
-                        // 'all' - no additional filtering
                         break;
                 }
 
@@ -703,119 +766,199 @@
             // If not logged in, show auth screen
             if (!user) {
                 return (
-                    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
-                        <div className="bg-white rounded-xl shadow-xl p-8 w-full max-w-md">
-                            <div className="text-center mb-8">
-                                <div className="mx-auto w-16 h-16 bg-blue-600 rounded-full flex items-center justify-center mb-4">
-                                    <PackageIcon />
+                    <div className="min-h-screen gradient-bg flex items-center justify-center p-4">
+                        {authView === 'company-register' ? (
+                            // Company Registration
+                            <div className="feature-card rounded-2xl shadow-2xl p-8 w-full max-w-2xl">
+                                <div className="text-center mb-8">
+                                    <div className="mx-auto w-20 h-20 bg-purple-600 rounded-full flex items-center justify-center mb-4">
+                                        <BuildingIcon className="w-10 h-10 text-white" />
+                                    </div>
+                                    <h1 className="text-3xl font-bold text-gray-800">Start Your Free Trial</h1>
+                                    <p className="text-gray-600 mt-2">Professional inventory management for your business</p>
                                 </div>
-                                <h1 className="text-3xl font-bold text-gray-800">Inventory System</h1>
-                                <p className="text-gray-600 mt-2">Manage your inventory across all devices</p>
-                            </div>
 
-                            <div className="flex mb-6">
-                                <button
-                                    onClick={() => setAuthView('login')}
-                                    className={`flex-1 py-2 text-center font-medium rounded-l-lg ${
-                                        authView === 'login' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-600'
-                                    }`}
-                                >
-                                    Login
-                                </button>
-                                <button
-                                    onClick={() => setAuthView('register')}
-                                    className={`flex-1 py-2 text-center font-medium rounded-r-lg ${
-                                        authView === 'register' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-600'
-                                    }`}
-                                >
-                                    Register
-                                </button>
-                            </div>
+                                <form onSubmit={handleCompanyRegister}>
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                                                <BuildingIcon className="inline w-4 h-4 mr-1" />
+                                                Company Name
+                                            </label>
+                                            <input
+                                                type="text"
+                                                value={authForm.companyName}
+                                                onChange={(e) => setAuthForm({...authForm, companyName: e.target.value})}
+                                                className="w-full p-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+                                                placeholder="Acme Corporation"
+                                                required
+                                            />
+                                        </div>
 
-                            <form onSubmit={authView === 'login' ? handleLogin : handleRegister}>
-                                {authView === 'register' && (
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                                                Company Size
+                                            </label>
+                                            <select
+                                                value={authForm.companySize}
+                                                onChange={(e) => setAuthForm({...authForm, companySize: e.target.value})}
+                                                className="w-full p-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+                                            >
+                                                <option value="small">1-10 employees</option>
+                                                <option value="medium">11-50 employees</option>
+                                                <option value="large">51-200 employees</option>
+                                                <option value="enterprise">200+ employees</option>
+                                            </select>
+                                        </div>
+
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                                                <UserIcon className="inline w-4 h-4 mr-1" />
+                                                Admin Name
+                                            </label>
+                                            <input
+                                                type="text"
+                                                value={authForm.name}
+                                                onChange={(e) => setAuthForm({...authForm, name: e.target.value})}
+                                                className="w-full p-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+                                                placeholder="John Doe"
+                                                required
+                                            />
+                                        </div>
+
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                                                Admin Email
+                                            </label>
+                                            <input
+                                                type="email"
+                                                value={authForm.email}
+                                                onChange={(e) => setAuthForm({...authForm, email: e.target.value})}
+                                                className="w-full p-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+                                                placeholder="admin@company.com"
+                                                required
+                                            />
+                                        </div>
+
+                                        <div className="md:col-span-2">
+                                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                                                <LockIcon className="inline w-4 h-4 mr-1" />
+                                                Admin Password
+                                            </label>
+                                            <input
+                                                type="password"
+                                                value={authForm.password}
+                                                onChange={(e) => setAuthForm({...authForm, password: e.target.value})}
+                                                className="w-full p-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+                                                placeholder="Create a strong password"
+                                                required
+                                            />
+                                        </div>
+                                    </div>
+
+                                    <div className="bg-purple-50 p-4 rounded-lg mb-6">
+                                        <h3 className="font-semibold text-purple-800 mb-2">✨ What's Included:</h3>
+                                        <ul className="text-sm text-purple-700 space-y-1">
+                                            <li>✓ 30-day free trial - no credit card required</li>
+                                            <li>✓ Unlimited users and inventory items</li>
+                                            <li>✓ Real-time barcode scanning</li>
+                                            <li>✓ Multi-location support</li>
+                                            <li>✓ Analytics and reporting</li>
+                                            <li>✓ 24/7 customer support</li>
+                                        </ul>
+                                    </div>
+
+                                    <button
+                                        type="submit"
+                                        disabled={authLoading}
+                                        className="w-full bg-purple-600 text-white py-3 rounded-lg hover:bg-purple-700 disabled:opacity-50 font-semibold"
+                                    >
+                                        {authLoading ? 'Creating Account...' : 'Start Free Trial'}
+                                    </button>
+                                </form>
+
+                                <div className="mt-6 text-center">
+                                    <p className="text-gray-600">
+                                        Already have an account?{' '}
+                                        <button
+                                            onClick={() => setAuthView('login')}
+                                            className="text-purple-600 hover:text-purple-800 font-medium"
+                                        >
+                                            Sign In
+                                        </button>
+                                    </p>
+                                </div>
+                            </div>
+                        ) : (
+                            // Login View
+                            <div className="feature-card rounded-2xl shadow-2xl p-8 w-full max-w-md">
+                                <div className="text-center mb-8">
+                                    <div className="mx-auto w-20 h-20 bg-purple-600 rounded-full flex items-center justify-center mb-4">
+                                        <PackageIcon className="w-10 h-10 text-white" />
+                                    </div>
+                                    <h1 className="text-3xl font-bold text-gray-800">Inventory Pro</h1>
+                                    <p className="text-gray-600 mt-2">Professional Inventory Management</p>
+                                </div>
+
+                                <form onSubmit={handleLogin}>
                                     <div className="mb-4">
                                         <label className="block text-sm font-medium text-gray-700 mb-2">
-                                            <UserIcon className="inline mr-2" />
-                                            Full Name
+                                            <UserIcon className="inline w-4 h-4 mr-1" />
+                                            Email
                                         </label>
                                         <input
-                                            type="text"
-                                            value={authForm.name}
-                                            onChange={(e) => setAuthForm({...authForm, name: e.target.value})}
-                                            className="w-full p-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                            placeholder="Enter your full name"
+                                            type="email"
+                                            value={authForm.email}
+                                            onChange={(e) => setAuthForm({...authForm, email: e.target.value})}
+                                            className="w-full p-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+                                            placeholder="user@company.com"
                                             required
                                         />
                                     </div>
-                                )}
 
-                                <div className="mb-4">
-                                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                                        <UserIcon className="inline mr-2" />
-                                        Email
-                                    </label>
-                                    <input
-                                        type="email"
-                                        value={authForm.email}
-                                        onChange={(e) => setAuthForm({...authForm, email: e.target.value})}
-                                        className="w-full p-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                        placeholder="Enter your email"
-                                        required
-                                    />
+                                    <div className="mb-6">
+                                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                                            <LockIcon className="inline w-4 h-4 mr-1" />
+                                            Password
+                                        </label>
+                                        <input
+                                            type="password"
+                                            value={authForm.password}
+                                            onChange={(e) => setAuthForm({...authForm, password: e.target.value})}
+                                            className="w-full p-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+                                            placeholder="Enter your password"
+                                            required
+                                        />
+                                    </div>
+
+                                    <button
+                                        type="submit"
+                                        disabled={authLoading}
+                                        className="w-full bg-purple-600 text-white py-3 rounded-lg hover:bg-purple-700 disabled:opacity-50 font-semibold"
+                                    >
+                                        {authLoading ? 'Signing in...' : 'Sign In'}
+                                    </button>
+                                </form>
+
+                                <div className="mt-6 text-center">
+                                    <p className="text-gray-600 mb-4">
+                                        New to Inventory Pro?{' '}
+                                        <button
+                                            onClick={() => setAuthView('company-register')}
+                                            className="text-purple-600 hover:text-purple-800 font-medium"
+                                        >
+                                            Start Free Trial
+                                        </button>
+                                    </p>
+                                    
+                                    <div className="pt-4 border-t">
+                                        <p className="text-sm text-gray-500">
+                                            Demo: demo@inventorypro.com / demo123
+                                        </p>
+                                    </div>
                                 </div>
-
-                                <div className="mb-6">
-                                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                                        <LockIcon className="inline mr-2" />
-                                        Password
-                                    </label>
-                                    <input
-                                        type="password"
-                                        value={authForm.password}
-                                        onChange={(e) => setAuthForm({...authForm, password: e.target.value})}
-                                        className="w-full p-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                        placeholder="Enter your password"
-                                        required
-                                    />
-                                </div>
-
-                                <button
-                                    type="submit"
-                                    disabled={authLoading}
-                                    className="w-full bg-blue-600 text-white py-3 rounded-lg hover:bg-blue-700 disabled:opacity-50"
-                                >
-                                    {authLoading ? 'Please wait...' : (authView === 'login' ? 'Login' : 'Create Account')}
-                                </button>
-                            </form>
-
-                            {/* Demo Credentials Section */}
-                            <div className="mt-4 p-3 bg-blue-50 rounded-lg border border-blue-200">
-                                <h4 className="font-medium text-blue-800 mb-2">🎯 Quick Demo</h4>
-                                <p className="text-sm text-blue-700 mb-2">Try the demo account:</p>
-                                <div className="text-xs font-mono bg-white p-2 rounded border mb-2">
-                                    <div>Email: demo@inventory.com</div>
-                                    <div>Password: demo123</div>
-                                </div>
-                                <button
-                                    onClick={() => {
-                                        setAuthForm({email: 'demo@inventory.com', password: 'demo123', name: ''});
-                                        setTimeout(() => {
-                                            const loginEvent = { preventDefault: () => {} };
-                                            handleLogin(loginEvent);
-                                        }, 100);
-                                    }}
-                                    className="w-full bg-blue-600 text-white py-2 rounded hover:bg-blue-700 text-sm"
-                                >
-                                    🚀 Auto-Login with Demo Account
-                                </button>
                             </div>
-
-                            <div className="mt-6 text-center text-sm text-gray-600">
-                                <p>Real backend with SQLite database</p>
-                                <p className="mt-1 text-xs">Data persists across sessions</p>
-                            </div>
-                        </div>
+                        )}
                     </div>
                 );
             }
@@ -825,37 +968,65 @@
                 <div className="min-h-screen bg-gray-50">
                     {/* Header */}
                     <div className="bg-white shadow-sm border-b">
-                        <div className="max-w-6xl mx-auto px-4 py-4">
+                        <div className="max-w-7xl mx-auto px-4 py-4">
                             <div className="flex items-center justify-between">
-                                <div className="flex items-center gap-3">
-                                    <div className="w-10 h-10 bg-blue-600 rounded-lg flex items-center justify-center">
-                                        <PackageIcon className="text-white" />
+                                <div className="flex items-center gap-4">
+                                    <div className="flex items-center gap-3">
+                                        <div className="w-10 h-10 bg-purple-600 rounded-lg flex items-center justify-center">
+                                            <PackageIcon className="text-white" />
+                                        </div>
+                                        <div>
+                                            <h1 className="text-xl font-bold text-gray-800">Inventory Pro</h1>
+                                            <p className="text-sm text-gray-600">{company?.name}</p>
+                                        </div>
                                     </div>
-                                    <div>
-                                        <h1 className="text-xl font-bold text-gray-800">Inventory System</h1>
-                                        <p className="text-sm text-gray-600">Welcome, {user.name}</p>
-                                    </div>
+                                    
+                                    {company && (
+                                        <div className="hidden md:flex items-center gap-4 ml-8">
+                                            <div className="text-sm">
+                                                <span className="text-gray-500">Plan:</span>{' '}
+                                                <span className={`font-medium ${
+                                                    company.subscription_tier === 'trial' ? 'text-yellow-600' :
+                                                    company.subscription_tier === 'pro' ? 'text-purple-600' :
+                                                    'text-green-600'
+                                                }`}>
+                                                    {company.subscription_tier.toUpperCase()}
+                                                </span>
+                                            </div>
+                                            <div className="text-sm">
+                                                <span className="text-gray-500">Users:</span>{' '}
+                                                <span className="font-medium">{companyUsers.length || 1}/{company.max_users || '∞'}</span>
+                                            </div>
+                                        </div>
+                                    )}
                                 </div>
-                                <button
-                                    onClick={handleLogout}
-                                    className="flex items-center gap-2 px-4 py-2 text-gray-600 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                                >
-                                    <LogOutIcon />
-                                    Logout
-                                </button>
+                                
+                                <div className="flex items-center gap-4">
+                                    <div className="text-right">
+                                        <p className="text-sm font-medium text-gray-800">{user.name}</p>
+                                        <p className="text-xs text-gray-500">{user.role === 'admin' ? 'Administrator' : 'User'}</p>
+                                    </div>
+                                    <button
+                                        onClick={handleLogout}
+                                        className="flex items-center gap-2 px-4 py-2 text-gray-600 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                                    >
+                                        <LogOutIcon />
+                                        <span className="hidden md:inline">Logout</span>
+                                    </button>
+                                </div>
                             </div>
                         </div>
                     </div>
 
                     {/* Navigation */}
                     <div className="bg-white border-b">
-                        <div className="max-w-6xl mx-auto px-4">
-                            <div className="flex">
+                        <div className="max-w-7xl mx-auto px-4">
+                            <div className="flex overflow-x-auto">
                                 <button
                                     onClick={() => setCurrentView('items')}
-                                    className={`px-6 py-3 font-medium border-b-2 ${
+                                    className={`px-6 py-3 font-medium border-b-2 whitespace-nowrap ${
                                         currentView === 'items' 
-                                            ? 'border-blue-600 text-blue-600' 
+                                            ? 'border-purple-600 text-purple-600' 
                                             : 'border-transparent text-gray-600 hover:text-gray-800'
                                     }`}
                                 >
@@ -863,9 +1034,9 @@
                                 </button>
                                 <button
                                     onClick={() => setCurrentView('inventory')}
-                                    className={`px-6 py-3 font-medium border-b-2 ${
+                                    className={`px-6 py-3 font-medium border-b-2 whitespace-nowrap ${
                                         currentView === 'inventory' 
-                                            ? 'border-blue-600 text-blue-600' 
+                                            ? 'border-purple-600 text-purple-600' 
                                             : 'border-transparent text-gray-600 hover:text-gray-800'
                                     }`}
                                 >
@@ -873,19 +1044,43 @@
                                 </button>
                                 <button
                                     onClick={() => setCurrentView('activity')}
-                                    className={`px-6 py-3 font-medium border-b-2 ${
+                                    className={`px-6 py-3 font-medium border-b-2 whitespace-nowrap ${
                                         currentView === 'activity' 
-                                            ? 'border-blue-600 text-blue-600' 
+                                            ? 'border-purple-600 text-purple-600' 
                                             : 'border-transparent text-gray-600 hover:text-gray-800'
                                     }`}
                                 >
-                                    Activity Log ({activities.length})
+                                    Activity Log
                                 </button>
+                                {user.role === 'admin' && (
+                                    <>
+                                        <button
+                                            onClick={() => setCurrentView('users')}
+                                            className={`px-6 py-3 font-medium border-b-2 whitespace-nowrap ${
+                                                currentView === 'users' 
+                                                    ? 'border-purple-600 text-purple-600' 
+                                                    : 'border-transparent text-gray-600 hover:text-gray-800'
+                                            }`}
+                                        >
+                                            Team ({companyUsers.length})
+                                        </button>
+                                        <button
+                                            onClick={() => setCurrentView('settings')}
+                                            className={`px-6 py-3 font-medium border-b-2 whitespace-nowrap ${
+                                                currentView === 'settings' 
+                                                    ? 'border-purple-600 text-purple-600' 
+                                                    : 'border-transparent text-gray-600 hover:text-gray-800'
+                                            }`}
+                                        >
+                                            Settings
+                                        </button>
+                                    </>
+                                )}
                             </div>
                         </div>
                     </div>
 
-                    <div className="max-w-6xl mx-auto p-4">
+                    <div className="max-w-7xl mx-auto p-4">
                         {currentView === 'items' ? (
                             /* Items Page View */
                             <div className="space-y-6">
@@ -896,24 +1091,23 @@
                                             <h2 className="text-2xl font-bold text-gray-800">All Items</h2>
                                             <p className="text-gray-600 mt-1">
                                                 {items.length === 0 ? 'No items in your inventory' : 
-                                                 items.length === 1 ? '1 item in your inventory' : 
-                                                 `${items.length} items in your inventory`}
+                                                 `${items.length} items · ${items.reduce((sum, item) => sum + item.quantity, 0)} total units`}
                                             </p>
                                         </div>
                                         <div className="flex gap-2">
                                             <button
                                                 onClick={() => setShowScanner(true)}
-                                                className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 flex items-center gap-2"
+                                                className="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 flex items-center gap-2"
                                             >
                                                 <CameraIcon />
-                                                Scan Item
+                                                Scan
                                             </button>
                                             <button
                                                 onClick={() => setCurrentView('inventory')}
                                                 className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 flex items-center gap-2"
                                             >
                                                 <PlusIcon />
-                                                Add New Item
+                                                Add Item
                                             </button>
                                         </div>
                                     </div>
@@ -927,7 +1121,7 @@
                                         <p className="text-gray-600 mb-6">Start building your inventory by adding your first item</p>
                                         <button
                                             onClick={() => setCurrentView('inventory')}
-                                            className="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 inline-flex items-center gap-2"
+                                            className="bg-purple-600 text-white px-6 py-3 rounded-lg hover:bg-purple-700 inline-flex items-center gap-2"
                                         >
                                             <PlusIcon />
                                             Add Your First Item
@@ -946,7 +1140,7 @@
                                                             placeholder="Search items by name or barcode..."
                                                             value={itemsSearch}
                                                             onChange={(e) => setItemsSearch(e.target.value)}
-                                                            className="w-full pl-10 pr-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                                            className="w-full pl-10 pr-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
                                                         />
                                                     </div>
                                                 </div>
@@ -954,33 +1148,13 @@
                                                     <select
                                                         value={itemsFilter}
                                                         onChange={(e) => setItemsFilter(e.target.value)}
-                                                        className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                                        className="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
                                                     >
                                                         <option value="all">All Items</option>
                                                         <option value="lowStock">Low Stock (≤5)</option>
                                                         <option value="outOfStock">Out of Stock</option>
                                                     </select>
                                                 </div>
-                                            </div>
-                                        </div>
-
-                                        {/* Summary Cards */}
-                                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                            <div className="bg-white rounded-lg shadow p-4">
-                                                <h3 className="text-sm font-medium text-gray-600 mb-1">Total Items</h3>
-                                                <p className="text-2xl font-bold text-blue-600">{items.length}</p>
-                                            </div>
-                                            <div className="bg-white rounded-lg shadow p-4">
-                                                <h3 className="text-sm font-medium text-gray-600 mb-1">Total Quantity</h3>
-                                                <p className="text-2xl font-bold text-green-600">
-                                                    {items.reduce((sum, item) => sum + item.quantity, 0)}
-                                                </p>
-                                            </div>
-                                            <div className="bg-white rounded-lg shadow p-4">
-                                                <h3 className="text-sm font-medium text-gray-600 mb-1">Low Stock Items</h3>
-                                                <p className="text-2xl font-bold text-red-600">
-                                                    {items.filter(item => item.quantity <= 5).length}
-                                                </p>
                                             </div>
                                         </div>
 
@@ -997,36 +1171,15 @@
                                                          itemsFilter === 'outOfStock' ? 'No items are out of stock' :
                                                          'Try adjusting your search or filter'}
                                                     </p>
-                                                    {(itemsSearch || itemsFilter !== 'all') && (
-                                                        <button
-                                                            onClick={() => {
-                                                                setItemsSearch('');
-                                                                setItemsFilter('all');
-                                                            }}
-                                                            className="mt-4 text-blue-600 hover:text-blue-800"
-                                                        >
-                                                            Clear filters
-                                                        </button>
-                                                    )}
                                                 </div>
                                             ) : (
                                                 <div className="bg-white rounded-lg shadow overflow-hidden">
-                                                    <div className="px-6 py-4 border-b bg-gray-50">
-                                                        <h3 className="text-lg font-semibold text-gray-800">
-                                                            Item Details 
-                                                            {filteredItems.length !== items.length && (
-                                                                <span className="text-sm font-normal text-gray-600">
-                                                                    ({filteredItems.length} of {items.length})
-                                                                </span>
-                                                            )}
-                                                        </h3>
-                                                    </div>
                                                     <div className="overflow-x-auto">
                                                         <table className="w-full">
                                                             <thead className="bg-gray-50">
                                                                 <tr>
                                                                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                                                        Item Name
+                                                                        Item
                                                                     </th>
                                                                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                                                                         Quantity
@@ -1035,10 +1188,7 @@
                                                                         Barcode
                                                                     </th>
                                                                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                                                        Created
-                                                                    </th>
-                                                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                                                        Last Modified
+                                                                        Last Updated
                                                                     </th>
                                                                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                                                                         Status
@@ -1046,23 +1196,21 @@
                                                                 </tr>
                                                             </thead>
                                                             <tbody className="bg-white divide-y divide-gray-200">
-                                                                {filteredItems.map((item, index) => (
-                                                                    <tr key={item.id} className={index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
+                                                                {filteredItems.map((item) => (
+                                                                    <tr key={item.id} className="hover:bg-gray-50">
                                                                         <td className="px-6 py-4 whitespace-nowrap">
                                                                             <div className="flex items-center">
-                                                                                <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center mr-3">
-                                                                                    <PackageIcon className="w-4 h-4 text-blue-600" />
+                                                                                <div className="w-8 h-8 bg-purple-100 rounded-full flex items-center justify-center mr-3">
+                                                                                    <PackageIcon className="w-4 h-4 text-purple-600" />
                                                                                 </div>
-                                                                                <div>
-                                                                                    <div className="text-sm font-medium text-gray-900">{item.name}</div>
-                                                                                </div>
+                                                                                <div className="text-sm font-medium text-gray-900">{item.name}</div>
                                                                             </div>
                                                                         </td>
                                                                         <td className="px-6 py-4 whitespace-nowrap">
                                                                             <div className="text-sm text-gray-900 font-medium">
                                                                                 <span className={
-                                                                                    item.quantity <= 5 ? 'text-red-600' : 
-                                                                                    item.quantity <= 10 ? 'text-yellow-600' : 
+                                                                                    item.quantity <= 0 ? 'text-red-600' : 
+                                                                                    item.quantity <= 5 ? 'text-yellow-600' : 
                                                                                     'text-green-600'
                                                                                 }>
                                                                                     {item.quantity}
@@ -1073,9 +1221,6 @@
                                                                             <div className="text-sm font-mono text-gray-900 bg-gray-100 px-2 py-1 rounded">
                                                                                 {item.barcode}
                                                                             </div>
-                                                                        </td>
-                                                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                                                            {item.created_at ? formatDate(item.created_at) : 'N/A'}
                                                                         </td>
                                                                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                                                                             {item.updated_at ? formatDate(item.updated_at) : 'N/A'}
@@ -1099,39 +1244,11 @@
                                                 </div>
                                             );
                                         })()}
-
-                                        {/* Quick Actions */}
-                                        <div className="bg-white rounded-lg shadow p-6">
-                                            <h3 className="text-lg font-semibold text-gray-800 mb-4">Quick Actions</h3>
-                                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                                <button
-                                                    onClick={() => setCurrentView('inventory')}
-                                                    className="flex items-center justify-center gap-2 bg-green-600 text-white py-3 px-4 rounded-lg hover:bg-green-700 transition-colors"
-                                                >
-                                                    <PlusIcon />
-                                                    Add New Item
-                                                </button>
-                                                <button
-                                                    onClick={() => setShowScanner(true)}
-                                                    className="flex items-center justify-center gap-2 bg-blue-600 text-white py-3 px-4 rounded-lg hover:bg-blue-700 transition-colors"
-                                                >
-                                                    <CameraIcon />
-                                                    Scan Barcode
-                                                </button>
-                                                <button
-                                                    onClick={() => setCurrentView('activity')}
-                                                    className="flex items-center justify-center gap-2 bg-gray-600 text-white py-3 px-4 rounded-lg hover:bg-gray-700 transition-colors"
-                                                >
-                                                    <ClockIcon />
-                                                    View Activity
-                                                </button>
-                                            </div>
-                                        </div>
                                     </div>
                                 )}
                             </div>
                         ) : currentView === 'inventory' ? (
-                            /* Inventory View */
+                            /* Inventory Management View */
                             <div className="space-y-6">
                                 {/* Add Item Form */}
                                 {showAddForm && (
@@ -1144,7 +1261,7 @@
                                                     type="text"
                                                     value={newItem.name}
                                                     onChange={(e) => setNewItem({...newItem, name: e.target.value})}
-                                                    className="w-full p-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                                    className="w-full p-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
                                                     placeholder="Enter item name"
                                                 />
                                             </div>
@@ -1154,7 +1271,7 @@
                                                     type="number"
                                                     value={newItem.quantity}
                                                     onChange={(e) => setNewItem({...newItem, quantity: e.target.value})}
-                                                    className="w-full p-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                                    className="w-full p-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
                                                     min="1"
                                                 />
                                             </div>
@@ -1162,7 +1279,7 @@
                                         <div className="flex gap-2 mt-4">
                                             <button
                                                 onClick={addItem}
-                                                className="flex-1 bg-blue-600 text-white py-3 rounded-lg hover:bg-blue-700"
+                                                className="flex-1 bg-purple-600 text-white py-3 rounded-lg hover:bg-purple-700"
                                             >
                                                 Create Item
                                             </button>
@@ -1187,7 +1304,7 @@
                                     </button>
                                     <button
                                         onClick={() => setShowScanner(true)}
-                                        className="flex-1 bg-blue-600 text-white py-3 rounded-lg hover:bg-blue-700 flex items-center justify-center gap-2"
+                                        className="flex-1 bg-purple-600 text-white py-3 rounded-lg hover:bg-purple-700 flex items-center justify-center gap-2"
                                     >
                                         <CameraIcon />
                                         Scan Item
@@ -1213,7 +1330,7 @@
                                                         </p>
                                                         <p className="text-xs text-gray-500">
                                                             <ClockIcon className="inline mr-1" />
-                                                            Modified: {item.updated_at ? formatDate(item.updated_at) : 'N/A'}
+                                                            {item.updated_at ? formatDate(item.updated_at) : 'N/A'}
                                                         </p>
                                                     </div>
                                                     <button
@@ -1228,7 +1345,6 @@
                                                     <div className="text-center">
                                                         <div className="font-mono text-sm mb-1">{item.barcode}</div>
                                                         <div className="barcode-pattern h-6 w-full"></div>
-                                                        <div className="text-xs text-gray-500 mt-1">Scan to update quantity</div>
                                                     </div>
                                                 </div>
 
@@ -1255,7 +1371,7 @@
                                     </div>
                                 )}
                             </div>
-                        ) : (
+                        ) : currentView === 'activity' ? (
                             /* Activity Log View */
                             <div className="bg-white rounded-lg shadow">
                                 <div className="p-6 border-b">
@@ -1263,14 +1379,13 @@
                                         <ClockIcon />
                                         Activity Log
                                     </h3>
-                                    <p className="text-sm text-gray-600 mt-1">Track all inventory changes and timestamps</p>
+                                    <p className="text-sm text-gray-600 mt-1">Track all inventory changes</p>
                                 </div>
                                 
                                 {activities.length === 0 ? (
                                     <div className="p-6 text-center">
                                         <ClockIcon className="mx-auto mb-4 opacity-50 w-16 h-16 text-gray-400" />
                                         <p className="text-gray-500">No activity recorded yet</p>
-                                        <p className="text-sm text-gray-400">Start managing your inventory to see activity logs</p>
                                     </div>
                                 ) : (
                                     <div className="activity-scroll">
@@ -1296,7 +1411,7 @@
                                                             {activity.type === 'deleted' && `Deleted item (had ${activity.quantity} items)`}
                                                         </p>
                                                         <p className="text-xs text-gray-500 mt-1">
-                                                            {activity.created_at ? formatDate(activity.created_at) : 'N/A'}
+                                                            By {activity.user_name} • {activity.created_at ? formatDate(activity.created_at) : 'N/A'}
                                                         </p>
                                                     </div>
                                                 </div>
@@ -1305,7 +1420,215 @@
                                     </div>
                                 )}
                             </div>
-                        )}
+                        ) : currentView === 'users' ? (
+                            /* Team Management View (Admin Only) */
+                            <div className="space-y-6">
+                                <div className="bg-white rounded-lg shadow p-6">
+                                    <div className="flex items-center justify-between mb-6">
+                                        <div>
+                                            <h2 className="text-2xl font-bold text-gray-800">Team Management</h2>
+                                            <p className="text-gray-600">Manage users and permissions</p>
+                                        </div>
+                                        <button
+                                            onClick={() => setShowInviteUser(true)}
+                                            className="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700 flex items-center gap-2"
+                                        >
+                                            <PlusIcon />
+                                            Invite User
+                                        </button>
+                                    </div>
+
+                                    {showInviteUser && (
+                                        <div className="mb-6 p-4 bg-gray-50 rounded-lg">
+                                            <h3 className="font-semibold mb-4">Invite New User</h3>
+                                            <form onSubmit={handleInviteUser} className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                                <input
+                                                    type="text"
+                                                    placeholder="Full Name"
+                                                    value={inviteForm.name}
+                                                    onChange={(e) => setInviteForm({...inviteForm, name: e.target.value})}
+                                                    className="p-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+                                                    required
+                                                />
+                                                <input
+                                                    type="email"
+                                                    placeholder="Email Address"
+                                                    value={inviteForm.email}
+                                                    onChange={(e) => setInviteForm({...inviteForm, email: e.target.value})}
+                                                    className="p-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+                                                    required
+                                                />
+                                                <div className="flex gap-2">
+                                                    <select
+                                                        value={inviteForm.role}
+                                                        onChange={(e) => setInviteForm({...inviteForm, role: e.target.value})}
+                                                        className="flex-1 p-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
+                                                    >
+                                                        <option value="user">User</option>
+                                                        <option value="admin">Admin</option>
+                                                    </select>
+                                                    <button
+                                                        type="submit"
+                                                        className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700"
+                                                    >
+                                                        Send Invite
+                                                    </button>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => setShowInviteUser(false)}
+                                                        className="bg-gray-500 text-white px-4 py-2 rounded-lg hover:bg-gray-600"
+                                                    >
+                                                        Cancel
+                                                    </button>
+                                                </div>
+                                            </form>
+                                        </div>
+                                    )}
+
+                                    <div className="overflow-x-auto">
+                                        <table className="w-full">
+                                            <thead className="bg-gray-50">
+                                                <tr>
+                                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                        User
+                                                    </th>
+                                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                        Role
+                                                    </th>
+                                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                        Status
+                                                    </th>
+                                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                        Joined
+                                                    </th>
+                                                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                                        Actions
+                                                    </th>
+                                                </tr>
+                                            </thead>
+                                            <tbody className="bg-white divide-y divide-gray-200">
+                                                {companyUsers.map(u => (
+                                                    <tr key={u.id}>
+                                                        <td className="px-6 py-4 whitespace-nowrap">
+                                                            <div className="flex items-center">
+                                                                <div className="w-8 h-8 bg-purple-100 rounded-full flex items-center justify-center mr-3">
+                                                                    <UserIcon className="w-4 h-4 text-purple-600" />
+                                                                </div>
+                                                                <div>
+                                                                    <div className="text-sm font-medium text-gray-900">{u.name}</div>
+                                                                    <div className="text-sm text-gray-500">{u.email}</div>
+                                                                </div>
+                                                            </div>
+                                                        </td>
+                                                        <td className="px-6 py-4 whitespace-nowrap">
+                                                            <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+                                                                u.role === 'admin' ? 'bg-purple-100 text-purple-800' : 'bg-gray-100 text-gray-800'
+                                                            }`}>
+                                                                {u.role === 'admin' ? 'Administrator' : 'User'}
+                                                            </span>
+                                                        </td>
+                                                        <td className="px-6 py-4 whitespace-nowrap">
+                                                            <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800">
+                                                                Active
+                                                            </span>
+                                                        </td>
+                                                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                                            {u.created_at ? formatDate(u.created_at) : 'N/A'}
+                                                        </td>
+                                                        <td className="px-6 py-4 whitespace-nowrap text-sm">
+                                                            {u.id !== user.id && (
+                                                                <button
+                                                                    onClick={() => handleDeleteUser(u.id)}
+                                                                    className="text-red-600 hover:text-red-900"
+                                                                >
+                                                                    Remove
+                                                                </button>
+                                                            )}
+                                                        </td>
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            </div>
+                        ) : currentView === 'settings' ? (
+                            /* Settings View (Admin Only) */
+                            <div className="space-y-6">
+                                <div className="bg-white rounded-lg shadow p-6">
+                                    <h2 className="text-2xl font-bold text-gray-800 mb-6">Company Settings</h2>
+                                    
+                                    <div className="space-y-6">
+                                        <div>
+                                            <h3 className="text-lg font-semibold mb-4">Company Information</h3>
+                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                <div>
+                                                    <label className="block text-sm font-medium text-gray-700 mb-1">Company Name</label>
+                                                    <input
+                                                        type="text"
+                                                        value={company?.name || ''}
+                                                        className="w-full p-2 border rounded-lg bg-gray-50"
+                                                        disabled
+                                                    />
+                                                </div>
+                                                <div>
+                                                    <label className="block text-sm font-medium text-gray-700 mb-1">Company Code</label>
+                                                    <input
+                                                        type="text"
+                                                        value={company?.code || ''}
+                                                        className="w-full p-2 border rounded-lg bg-gray-50 font-mono"
+                                                        disabled
+                                                    />
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <div>
+                                            <h3 className="text-lg font-semibold mb-4">Subscription</h3>
+                                            <div className="bg-gray-50 p-4 rounded-lg">
+                                                <div className="flex items-center justify-between mb-4">
+                                                    <div>
+                                                        <p className="font-medium">Current Plan: {company?.subscription_tier?.toUpperCase()}</p>
+                                                        <p className="text-sm text-gray-600">
+                                                            {company?.subscription_tier === 'trial' && 'Free trial - Upgrade to unlock all features'}
+                                                            {company?.subscription_tier === 'pro' && 'Professional plan - Perfect for growing businesses'}
+                                                            {company?.subscription_tier === 'enterprise' && 'Enterprise plan - Unlimited everything'}
+                                                        </p>
+                                                    </div>
+                                                    {company?.subscription_tier !== 'enterprise' && (
+                                                        <button className="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700">
+                                                            Upgrade Plan
+                                                        </button>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <div>
+                                            <h3 className="text-lg font-semibold mb-4">Features</h3>
+                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                <div className="flex items-center gap-2">
+                                                    <CheckIcon className="w-5 h-5 text-green-600" />
+                                                    <span>Unlimited Inventory Items</span>
+                                                </div>
+                                                <div className="flex items-center gap-2">
+                                                    <CheckIcon className="w-5 h-5 text-green-600" />
+                                                    <span>Barcode Scanning</span>
+                                                </div>
+                                                <div className="flex items-center gap-2">
+                                                    <CheckIcon className="w-5 h-5 text-green-600" />
+                                                    <span>Activity Tracking</span>
+                                                </div>
+                                                <div className="flex items-center gap-2">
+                                                    <CheckIcon className="w-5 h-5 text-green-600" />
+                                                    <span>Multi-User Support</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        ) : null}
                     </div>
 
                     {/* Scanner Modal */}
@@ -1325,60 +1648,9 @@
                                             <p className="text-gray-600 mb-4">Camera access required to scan barcodes</p>
                                             <button
                                                 onClick={requestCameraPermission}
-                                                className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700"
+                                                className="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700"
                                             >
                                                 Enable Camera
-                                            </button>
-                                        </div>
-                                    )}
-
-                                    {cameraStatus === 'requesting' && (
-                                        <div className="bg-blue-50 rounded-lg p-8 text-center">
-                                            <div className="animate-spin mx-auto mb-3 w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full"></div>
-                                            <p className="text-blue-800">Requesting camera access...</p>
-                                            <p className="text-sm text-blue-600 mt-1">Please allow camera access in your browser</p>
-                                        </div>
-                                    )}
-
-                                    {cameraStatus === 'denied' && (
-                                        <div className="bg-red-50 rounded-lg p-8 text-center">
-                                            <div className="mx-auto mb-3 w-12 h-12 text-red-400">🚫</div>
-                                            <p className="text-red-800 mb-2 font-semibold">Camera Access Denied</p>
-                                            <div className="text-sm text-red-600 mb-4 space-y-2">
-                                                <p>Camera access was blocked. To enable:</p>
-                                                <ul className="text-left space-y-1 max-w-xs mx-auto">
-                                                    <li>• Click the camera icon 📷 in your browser's address bar</li>
-                                                    <li>• Select "Allow" for camera access</li>
-                                                    <li>• Refresh the page and try again</li>
-                                                </ul>
-                                            </div>
-                                            <button
-                                                onClick={requestCameraPermission}
-                                                className="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700"
-                                            >
-                                                Try Again
-                                            </button>
-                                        </div>
-                                    )}
-
-                                    {cameraStatus === 'error' && (
-                                        <div className="bg-yellow-50 rounded-lg p-8 text-center">
-                                            <div className="mx-auto mb-3 w-12 h-12 text-yellow-400">⚠️</div>
-                                            <p className="text-yellow-800 mb-2 font-semibold">Camera Error</p>
-                                            <div className="text-sm text-yellow-600 mb-4 space-y-2">
-                                                <p>Unable to access camera. Try these steps:</p>
-                                                <ul className="text-left space-y-1 max-w-xs mx-auto">
-                                                    <li>• Check if camera is working in other apps</li>
-                                                    <li>• Close other applications using the camera</li>
-                                                    <li>• Restart your browser</li>
-                                                    <li>• Try a different browser</li>
-                                                </ul>
-                                            </div>
-                                            <button
-                                                onClick={requestCameraPermission}
-                                                className="bg-yellow-600 text-white px-4 py-2 rounded-lg hover:bg-yellow-700"
-                                            >
-                                                Try Again
                                             </button>
                                         </div>
                                     )}
@@ -1391,48 +1663,25 @@
                                                 playsInline 
                                                 muted
                                                 className="w-full h-64 bg-black rounded-lg object-cover"
-                                                onLoadedMetadata={() => {
-                                                    if (videoRef.current) {
-                                                        videoRef.current.play().catch(console.error);
-                                                    }
-                                                }}
-                                                onCanPlay={() => {
-                                                    console.log('Video can play');
-                                                }}
-                                                onError={(e) => {
-                                                    console.error('Video error:', e);
-                                                    setCameraStatus('error');
-                                                }}
                                             />
-                                            <div className="absolute top-2 left-2 bg-green-600 text-white px-2 py-1 rounded text-xs flex items-center gap-1">
-                                                <div className="w-2 h-2 bg-white rounded-full animate-pulse"></div>
-                                                Camera Active
+                                            <div className="absolute inset-4 border-2 border-purple-500 rounded-lg pointer-events-none">
+                                                <div className="absolute top-0 left-0 w-6 h-6 border-t-4 border-l-4 border-purple-500"></div>
+                                                <div className="absolute top-0 right-0 w-6 h-6 border-t-4 border-r-4 border-purple-500"></div>
+                                                <div className="absolute bottom-0 left-0 w-6 h-6 border-b-4 border-l-4 border-purple-500"></div>
+                                                <div className="absolute bottom-0 right-0 w-6 h-6 border-b-4 border-r-4 border-purple-500"></div>
                                             </div>
-                                            {/* Scanning overlay */}
-                                            <div className="absolute inset-4 border-2 border-blue-500 rounded-lg pointer-events-none">
-                                                <div className="absolute top-0 left-0 w-6 h-6 border-t-4 border-l-4 border-blue-500"></div>
-                                                <div className="absolute top-0 right-0 w-6 h-6 border-t-4 border-r-4 border-blue-500"></div>
-                                                <div className="absolute bottom-0 left-0 w-6 h-6 border-b-4 border-l-4 border-blue-500"></div>
-                                                <div className="absolute bottom-0 right-0 w-6 h-6 border-b-4 border-r-4 border-blue-500"></div>
-                                                {/* Scanning line animation */}
-                                                <div className="absolute top-0 left-0 right-0 h-0.5 bg-blue-500 animate-pulse"></div>
-                                            </div>
-                                            <p className="text-center text-sm text-gray-600 mt-2">
-                                                Point camera at barcode to scan
-                                            </p>
                                         </div>
                                     )}
                                 </div>
 
-                                {/* Manual Barcode Entry - Fallback when camera fails */}
+                                {/* Manual Barcode Entry */}
                                 <div className="mb-4 p-4 bg-gray-50 rounded-lg border">
-                                    <h4 className="font-medium text-gray-800 mb-2">Alternative: Manual Barcode Entry</h4>
-                                    <p className="text-sm text-gray-600 mb-3">Can't use camera? Enter a barcode manually:</p>
+                                    <h4 className="font-medium text-gray-800 mb-2">Manual Barcode Entry</h4>
                                     <div className="flex gap-2">
                                         <input
                                             type="text"
-                                            placeholder="Enter barcode (e.g., INV000001)"
-                                            className="flex-1 px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                            placeholder={`Enter barcode (e.g., ${company?.code || 'INV'}-000001)`}
+                                            className="flex-1 px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500"
                                             onKeyDown={(e) => {
                                                 if (e.key === 'Enter' && e.target.value.trim()) {
                                                     simulateScan(e.target.value.trim());
@@ -1448,36 +1697,17 @@
                                                     input.value = '';
                                                 }
                                             }}
-                                            className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700"
+                                            className="bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700"
                                         >
                                             Look Up
                                         </button>
                                     </div>
-                                    {items.length > 0 && (
-                                        <div className="mt-3">
-                                            <p className="text-xs text-gray-500 mb-1">Or click an existing item:</p>
-                                            <div className="flex flex-wrap gap-1">
-                                                {items.slice(0, 3).map(item => (
-                                                    <button
-                                                        key={item.id}
-                                                        onClick={() => simulateScan(item.barcode)}
-                                                        className="text-xs bg-white border px-2 py-1 rounded hover:bg-gray-50"
-                                                    >
-                                                        {item.name}
-                                                    </button>
-                                                ))}
-                                                {items.length > 3 && (
-                                                    <span className="text-xs text-gray-400 px-2 py-1">+{items.length - 3} more</span>
-                                                )}
-                                            </div>
-                                        </div>
-                                    )}
                                 </div>
 
                                 {/* Scan Results */}
                                 {scanResult && (
-                                    <div className="mb-4 p-3 bg-blue-50 rounded">
-                                        <p className="text-sm font-medium text-blue-800">{scanResult}</p>
+                                    <div className="mb-4 p-3 bg-purple-50 rounded text-purple-800">
+                                        <p className="text-sm font-medium">{scanResult}</p>
                                     </div>
                                 )}
 
@@ -1492,25 +1722,24 @@
                                             </div>
                                         </div>
                                         
-                                        {/* Add/Remove Toggle */}
                                         <div className="flex items-center gap-2 mb-3">
                                             <span className="text-sm font-medium text-gray-700">Action:</span>
                                             <button
                                                 onClick={() => setAdjustAction('remove')}
-                                                className={`px-3 py-1 rounded text-sm font-medium transition-colors ${
+                                                className={`px-3 py-1 rounded text-sm font-medium ${
                                                     adjustAction === 'remove' 
                                                         ? 'bg-red-600 text-white' 
-                                                        : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                                                        : 'bg-gray-200 text-gray-700'
                                                 }`}
                                             >
                                                 Remove
                                             </button>
                                             <button
                                                 onClick={() => setAdjustAction('add')}
-                                                className={`px-3 py-1 rounded text-sm font-medium transition-colors ${
+                                                className={`px-3 py-1 rounded text-sm font-medium ${
                                                     adjustAction === 'add' 
                                                         ? 'bg-green-600 text-white' 
-                                                        : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                                                        : 'bg-gray-200 text-gray-700'
                                                 }`}
                                             >
                                                 Add
@@ -1521,60 +1750,38 @@
                                             <span className="text-sm font-medium text-gray-700">Quantity:</span>
                                             <button 
                                                 onClick={() => setAdjustQuantity(Math.max(1, adjustQuantity - 1))}
-                                                className="p-1 bg-gray-200 rounded hover:bg-gray-300 transition-colors"
+                                                className="p-1 bg-gray-200 rounded hover:bg-gray-300"
                                             >
                                                 <MinusIcon />
                                             </button>
                                             <span className="px-3 py-1 bg-white rounded border font-medium min-w-[3rem] text-center">{adjustQuantity}</span>
                                             <button 
                                                 onClick={() => setAdjustQuantity(adjustQuantity + 1)}
-                                                className="p-1 bg-gray-200 rounded hover:bg-gray-300 transition-colors"
+                                                className="p-1 bg-gray-200 rounded hover:bg-gray-300"
                                             >
                                                 <PlusIcon />
                                             </button>
                                         </div>
                                         
-                                        {/* Preview of action */}
-                                        <div className="mb-3 p-2 bg-white rounded border text-sm">
-                                            {adjustAction === 'add' ? (
-                                                <span className="text-green-700">
-                                                    <strong>Preview:</strong> Add {adjustQuantity} → New total: <strong>{selectedItem.quantity + adjustQuantity}</strong>
-                                                </span>
-                                            ) : (
-                                                <span className="text-red-700">
-                                                    <strong>Preview:</strong> Remove {adjustQuantity} → New total: <strong>{Math.max(0, selectedItem.quantity - adjustQuantity)}</strong>
-                                                </span>
-                                            )}
-                                        </div>
-                                        
                                         <button
                                             onClick={processScannedItem}
-                                            disabled={adjustAction === 'remove' && selectedItem.quantity < adjustQuantity}
-                                            className={`w-full py-2 rounded font-medium transition-colors ${
+                                            className={`w-full py-2 rounded font-medium ${
                                                 adjustAction === 'add' 
                                                     ? 'bg-green-600 text-white hover:bg-green-700' 
-                                                    : selectedItem.quantity < adjustQuantity
-                                                        ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                                                        : 'bg-red-600 text-white hover:bg-red-700'
+                                                    : 'bg-red-600 text-white hover:bg-red-700'
                                             }`}
                                         >
                                             {adjustAction === 'add' ? 'Add Items' : 'Remove Items'}
-                                            {adjustAction === 'remove' && selectedItem.quantity < adjustQuantity && (
-                                                <div className="text-xs mt-1">Not enough stock available</div>
-                                            )}
                                         </button>
                                     </div>
                                 )}
 
-                                {/* Action Buttons */}
-                                <div className="flex gap-2">
-                                    <button
-                                        onClick={stopCamera}
-                                        className="flex-1 bg-gray-500 text-white py-2 rounded-lg hover:bg-gray-600 transition-colors"
-                                    >
-                                        Close Scanner
-                                    </button>
-                                </div>
+                                <button
+                                    onClick={stopCamera}
+                                    className="w-full bg-gray-500 text-white py-2 rounded-lg hover:bg-gray-600"
+                                >
+                                    Close Scanner
+                                </button>
                             </div>
                         </div>
                     )}
@@ -1589,6 +1796,7 @@
                                     <h4 className="font-medium text-center mb-2">{newlyCreatedItem.name}</h4>
                                     <div className="bg-white p-3 rounded border">
                                         <div className="text-center">
+                                            <div className="text-xs text-gray-500 mb-1">{company?.name}</div>
                                             <div className="font-mono text-sm mb-1">{newlyCreatedItem.barcode}</div>
                                             <div className="barcode-pattern h-10 w-full"></div>
                                             <div className="text-xs text-gray-500 mt-1">Qty: {newlyCreatedItem.quantity}</div>
@@ -1602,12 +1810,11 @@
                                         {availablePrinters.map(printer => (
                                             <div 
                                                 key={printer.id}
-                                                className={
-                                                    'p-3 border rounded-lg cursor-pointer transition-colors ' +
-                                                    (selectedPrinter && selectedPrinter.id === printer.id 
-                                                        ? 'border-blue-500 bg-blue-50' 
-                                                        : 'border-gray-200 hover:border-gray-300')
-                                                }
+                                                className={`p-3 border rounded-lg cursor-pointer ${
+                                                    selectedPrinter?.id === printer.id 
+                                                        ? 'border-purple-500 bg-purple-50' 
+                                                        : 'border-gray-200 hover:border-gray-300'
+                                                }`}
                                                 onClick={() => setSelectedPrinter(printer)}
                                             >
                                                 <div className="flex items-center justify-between">
@@ -1615,13 +1822,12 @@
                                                         <div className="font-medium">{printer.name}</div>
                                                         <div className="text-sm text-gray-500 capitalize">{printer.type}</div>
                                                     </div>
-                                                    <div className={
-                                                        'w-4 h-4 rounded-full border-2 ' +
-                                                        (selectedPrinter && selectedPrinter.id === printer.id 
-                                                            ? 'border-blue-500 bg-blue-500' 
-                                                            : 'border-gray-300')
-                                                    }>
-                                                        {selectedPrinter && selectedPrinter.id === printer.id && (
+                                                    <div className={`w-4 h-4 rounded-full border-2 ${
+                                                        selectedPrinter?.id === printer.id 
+                                                            ? 'border-purple-500 bg-purple-500' 
+                                                            : 'border-gray-300'
+                                                    }`}>
+                                                        {selectedPrinter?.id === printer.id && (
                                                             <div className="w-2 h-2 bg-white rounded-full m-0.5"></div>
                                                         )}
                                                     </div>
@@ -1636,17 +1842,16 @@
                                         onClick={skipPrinting}
                                         className="flex-1 bg-gray-500 text-white py-3 rounded-lg hover:bg-gray-600"
                                     >
-                                        Skip Printing
+                                        Skip
                                     </button>
                                     <button
                                         onClick={printBarcode}
                                         disabled={!selectedPrinter}
-                                        className={
-                                            'flex-1 py-3 rounded-lg font-medium ' +
-                                            (selectedPrinter
-                                                ? 'bg-blue-600 text-white hover:bg-blue-700'
-                                                : 'bg-gray-300 text-gray-500 cursor-not-allowed')
-                                        }
+                                        className={`flex-1 py-3 rounded-lg font-medium ${
+                                            selectedPrinter
+                                                ? 'bg-purple-600 text-white hover:bg-purple-700'
+                                                : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                                        }`}
                                     >
                                         Print Label
                                     </button>
@@ -1661,7 +1866,7 @@
         const root = ReactDOM.createRoot(document.getElementById('root'));
         root.render(React.createElement(InventorySystem));
 
-        console.log('🎯 Inventory System with SQLite Backend loaded successfully!');
+        console.log('🎯 Multi-Tenant Inventory Pro System loaded successfully!');
     </script>
 </body>
 </html>
